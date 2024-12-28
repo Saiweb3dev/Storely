@@ -2,76 +2,95 @@ package main
 
 import (
     "context"
-    "fmt"
     "log"
     "net/http"
     "os"
     "os/signal"
     "syscall"
     "time"
+
     "backend/config"
-    "backend/internal/handlers"
+    "go.mongodb.org/mongo-driver/mongo"
     "backend/internal/repository"
     "backend/internal/service"
-    "github.com/gorilla/mux"
+    "backend/api"
 )
 
 func main() {
-    // Connect to MongoDB
+    // Load environment variables
+    config.LoadEnv()
+
+    // Initialize MongoDB client
     client, err := config.ConnectDB()
     if err != nil {
         log.Fatalf("Failed to connect to MongoDB: %v", err)
     }
-
-    // Ensure disconnection when the program exits
     defer func() {
-        ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-        defer cancel()
-        if err := client.Disconnect(ctx); err != nil {
-            log.Printf("Error disconnecting from MongoDB: %v", err)
+        if err := disconnectMongo(client); err != nil {
+            log.Printf("Error disconnecting MongoDB: %v", err)
         }
     }()
 
+    // Initialize repositories and services
     fileRepo := repository.NewFileRepository(client)
     fileService := service.NewFileService(fileRepo)
-    fileHandler := handlers.NewFileHandler(fileService)
 
-    router := mux.NewRouter()
-    router.HandleFunc("/file_metadata", fileHandler.CreateFileMetadata).Methods("POST")
+    // Create router and register API routes
+    router := api.NewRouter(fileService)
 
+    // Start the HTTP server
+    port := os.Getenv("SERVER_PORT")
+    if port == "" {
+        port = "8080" // Default to port 8080
+    }
+    server := startServer(router, port)
+
+    // Handle graceful shutdown
+    gracefulShutdown(server)
+}
+
+func disconnectMongo(client *mongo.Client) error {
+    ctx, cancel := createTimeoutContext(10 * time.Second)
+    defer cancel()
+    return client.Disconnect(ctx)
+}
+
+// startServer initializes and starts the HTTP server.
+func startServer(handler http.Handler, port string) *http.Server {
     server := &http.Server{
-        Addr:    ":8080",
-        Handler: router,
+        Addr:    ":" + port,
+        Handler: handler,
     }
 
-    // Channel to listen for errors coming from the server
-    serverErrors := make(chan error, 1)
-
-    // Start server
     go func() {
-        fmt.Printf("🚀 Server starting on http://localhost%s\n", server.Addr)
-        fmt.Println("Press Ctrl+C to stop the server")
-        serverErrors <- server.ListenAndServe()
+        log.Printf("🚀 Server starting on http://localhost:%s\n", port)
+        if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+            log.Fatalf("Server error: %v", err)
+        }
     }()
 
-    // Channel to listen for interrupt signal
+    return server
+}
+
+// gracefulShutdown handles server shutdown gracefully.
+func gracefulShutdown(server *http.Server) {
     shutdown := make(chan os.Signal, 1)
     signal.Notify(shutdown, os.Interrupt, syscall.SIGTERM)
 
-    // Block until either an error or interrupt occurs
-    select {
-    case err := <-serverErrors:
-        log.Fatalf("Server error: %v", err)
-    case <-shutdown:
-        fmt.Println("\nServer is shutting down...")
-        ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-        defer cancel()
+    <-shutdown // Wait for shutdown signal
+    log.Println("🔄 Initiating graceful server shutdown...")
 
-        // Gracefully shutdown the server
-        if err := server.Shutdown(ctx); err != nil {
-            log.Printf("Could not gracefully shutdown the server: %v\n", err)
-            return
-        }
-        fmt.Println("Server stopped gracefully")
+    ctx, cancel := createTimeoutContext(10 * time.Second)
+    defer cancel()
+
+    if err := server.Shutdown(ctx); err != nil {
+        log.Printf("Error shutting down server: %v", err)
     }
+
+    log.Println("✅ Server stopped gracefully")
+}
+
+// createTimeoutContext creates a context with a timeout.
+func createTimeoutContext(timeout time.Duration) (context.Context, context.CancelFunc) {
+    return context.WithTimeout(context.Background(), timeout)
 }
