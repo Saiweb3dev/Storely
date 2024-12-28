@@ -14,6 +14,7 @@ import (
     "backend/internal/repository"
     "backend/internal/service"
     "backend/api"
+    "backend/middleware"
 )
 
 func main() {
@@ -25,6 +26,12 @@ func main() {
     if err != nil {
         log.Fatalf("Failed to connect to MongoDB: %v", err)
     }
+    // Initialize MinIO client
+    minioClient, err := config.ConnectMinIO()
+    if err != nil {
+        log.Fatalf("Failed to connect to MinIO: %v", err)
+    }
+    
     defer func() {
         if err := disconnectMongo(client); err != nil {
             log.Printf("Error disconnecting MongoDB: %v", err)
@@ -36,14 +43,18 @@ func main() {
     fileService := service.NewFileService(fileRepo)
 
     // Create router and register API routes
-    router := api.NewRouter(fileService)
+    bucket := os.Getenv("MINIO_BUCKET_NAME")
+    router := api.NewRouter(fileService, minioClient, bucket)
 
     // Start the HTTP server
     port := os.Getenv("SERVER_PORT")
     if port == "" {
         port = "8080" // Default to port 8080
     }
-    server := startServer(router, port)
+    corsRouter := middleware.CORS(router) // Wrap the router with CORS middleware
+
+// Update the server start to use corsRouter
+server := startServer(corsRouter, port)
 
     // Handle graceful shutdown
     gracefulShutdown(server)

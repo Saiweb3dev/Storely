@@ -9,6 +9,8 @@ import (
     "github.com/joho/godotenv"
     "go.mongodb.org/mongo-driver/mongo"
     "go.mongodb.org/mongo-driver/mongo/options"
+    "github.com/minio/minio-go/v7"
+    "github.com/minio/minio-go/v7/pkg/credentials"
 )
 
 // LoadEnv loads environment variables from a .env file or system environment.
@@ -51,5 +53,28 @@ func ConnectDB() (*mongo.Client, error) {
         return nil, err
     }
 
+    return client, nil
+}
+
+//Connection to MinIO client
+func ConnectMinIO() (*minio.Client,error) {
+    endpoint := os.Getenv("MINIO_ENDPOINT")
+    accessKey := os.Getenv("MINIO_ACCESS_KEY")
+    secretKey := os.Getenv("MINIO_SECRET_KEY")
+
+    if endpoint == "" || accessKey == "" || secretKey == "" {
+        log.Fatal("MINIO_ENDPOINT, MINIO_ACCESS_KEY, and MINIO_SECRET_KEY are not set in the environment variables")
+    }
+
+    client, err := minio.New(endpoint, &minio.Options{
+        Creds: credentials.NewStaticV4(accessKey, secretKey, ""),
+        Secure: true,
+    })
+
+    if err != nil {
+        return nil, err
+    }
+
+    log.Printf("Connected to MinIO at %s", endpoint)
     return client, nil
 }
