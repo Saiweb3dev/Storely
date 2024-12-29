@@ -1,29 +1,14 @@
 // components/RecentUploads.tsx
 "use client"
-import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { FileIcon, Download, Copy, Check } from 'lucide-react';
-import { RecentUpload } from '../types/upload';
+import { useUploads } from '@/contexts/UploadsContext';
+import ClearOptions from './ClearOptions';
+import { useState } from 'react';
 
-const RecentUploads = () => {
-  const [recentUploads, setRecentUploads] = useState<RecentUpload[]>([]);
+export default function RecentUploads() {
+  const { recentUploads } = useUploads();
   const [copiedId, setCopiedId] = useState<string | null>(null);
-
-  useEffect(() => {
-    const stored = localStorage.getItem('recentUploads');
-    if (stored) {
-      try {
-        const uploads = JSON.parse(stored);
-        // Convert string dates back to Date objects
-        setRecentUploads(uploads.map((upload: any) => ({
-          ...upload,
-          uploadedAt: new Date(upload.uploadedAt)
-        })));
-      } catch (error) {
-        console.error('Failed to parse recent uploads:', error);
-      }
-    }
-  }, []);
 
   const copyToClipboard = async (fileId: string) => {
     try {
@@ -50,7 +35,11 @@ const RecentUploads = () => {
       animate={{ opacity: 1, y: 0 }}
       className="max-w-md mx-auto mt-6 p-6 bg-white rounded-lg shadow-lg"
     >
-      <h2 className="text-xl text-black font-bold mb-4">Recent Uploads</h2>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl text-black font-bold">Recent Uploads</h2>
+        <ClearOptions />
+      </div>
+      
       {recentUploads.length === 0 ? (
         <p className="text-blue-500 text-center">No recent uploads</p>
       ) : (
@@ -71,7 +60,7 @@ const RecentUploads = () => {
                   <div className="flex items-center space-x-2 text-sm text-blue-500">
                     <span>{upload.fileType}</span>
                     <span>•</span>
-                    <span>{formatDate(upload.uploadedAt)}</span>
+                    <span>{formatDate(new Date(upload.uploadedAt))}</span>
                   </div>
                 </div>
               </div>
@@ -101,6 +90,4 @@ const RecentUploads = () => {
       )}
     </motion.div>
   );
-};
-
-export default RecentUploads;
+}

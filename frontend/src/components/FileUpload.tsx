@@ -5,12 +5,13 @@ import { uploadService } from "../service/uploadService"
 import { motion, AnimatePresence } from 'framer-motion'
 import { Upload, X, AlertCircle, File } from 'lucide-react'
 import { RecentUpload, UploadProgressInfo } from '@/types/upload'
-
+import { useUploads } from '@/contexts/UploadsContext';
 interface FileWithPreview extends File {
   preview: string;
 }
 
 export default function FileUpload() {
+  const { addUploads } = useUploads();
   const [files, setFiles] = useState<FileWithPreview[]>([])
   const [uploadProgress, setUploadProgress] = useState<UploadProgressInfo[]>([])
   const [isUploading, setIsUploading] = useState(false)
@@ -68,6 +69,8 @@ export default function FileUpload() {
         fileType: result.fileType,
         uploadedAt: new Date()
       }));
+
+      addUploads(newUploads);
   
       const stored = localStorage.getItem('recentUploads');
       const existingUploads: RecentUpload[] = stored ? JSON.parse(stored) : [];
