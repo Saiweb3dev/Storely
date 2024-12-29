@@ -48,7 +48,6 @@ func (r *FileRepository) Create(ctx context.Context, file *models.FileMetadata) 
 
 // In internal/repository/file_repository.go
 // Add new method that matches the handler's call
-
 func (r *FileRepository) CreateFile(ctx context.Context, file *models.File) error {
     // Convert File to FileMetadata
     metadata := &models.FileMetadata{
@@ -62,7 +61,6 @@ func (r *FileRepository) CreateFile(ctx context.Context, file *models.File) erro
     return r.Create(ctx, metadata)
 }
 
-// internal/repository/file_repository.go
 
 func (r *FileRepository) GetFileByID(ctx context.Context, fileID string) (*models.File, error) {
     objectID, err := primitive.ObjectIDFromHex(fileID)

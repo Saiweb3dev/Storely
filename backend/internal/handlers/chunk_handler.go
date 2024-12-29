@@ -5,7 +5,7 @@ import (
     "fmt"
     "io"
     "encoding/json"
-		"log"
+	"log"
     "net/http"
     "strconv"
     "time"
@@ -35,8 +35,6 @@ func NewChunkHandler(chunkRepo *repository.ChunkRepository, fileRepo *repository
         fileRepo:  fileRepo,
     }
 }
-
-// internal/handlers/chunk_handler.go
 
 func (h *ChunkHandler) HandleChunkUpload(w http.ResponseWriter, r *http.Request) {
     var fileID string

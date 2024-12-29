@@ -33,6 +33,6 @@ func CORS(next http.Handler) http.Handler {
         next.ServeHTTP(w, r)
         
         // Log response
-        log.Printf("Completed request to %s with status %d", r.URL.Path, w.Header().Get("Status"))
+        log.Printf("Completed request to %s", r.URL.Path)
     })
 }

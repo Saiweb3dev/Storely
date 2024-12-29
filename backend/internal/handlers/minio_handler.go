@@ -3,10 +3,7 @@ package handlers
 import (
     "net/http"
     "backend/internal/service"
-		"log"
-    // "strconv"
-
-    // "github.com/gorilla/mux"
+	"log"
 )
 
 type MinIOHandler struct {

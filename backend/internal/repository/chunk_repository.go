@@ -6,8 +6,8 @@ import (
 		"log"
     "backend/internal/models"
     "go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
+	  "go.mongodb.org/mongo-driver/bson"
+	  "go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type ChunkRepository struct {
@@ -49,14 +49,10 @@ func (r *ChunkRepository) GetFileChunks(ctx context.Context, fileID string) ([]*
     return chunks, nil
 }
 
-// internal/repository/chunk_repository.go
-
 func (r *ChunkRepository) CountChunks(ctx context.Context, fileID string) (int, error) {
 	count, err := r.db.Collection("chunks").CountDocuments(ctx, bson.M{"file_id": fileID})
 	return int(count), err
 }
-
-// in internal/repository/file_repository.go
 
 func (r *FileRepository) MarkFileComplete(ctx context.Context, fileID string) error {
 	// Convert string ID to ObjectID
