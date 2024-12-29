@@ -1,32 +1,20 @@
-// src/services/uploadService.ts
+// services/uploadService.ts
 import axios from "axios";
+import { UploadResponse, UploadProgressInfo, UploadOptions } from "../types/upload";
 
 const DEFAULT_CHUNK_SIZE = 1024 * 1024; // 1MB
 const MAX_CHUNK_SIZE = 5 * 1024 * 1024; // 5MB
-
-export interface UploadProgressInfo {
-  fileName: string;
-  progress: number;
-}
-
-export interface UploadOptions {
-  chunkSize?: number;
-  maxRetries?: number;
-}
 
 export type ProgressCallback = (info: UploadProgressInfo) => void;
 
 class UploadService {
   private calculateChunkSize(fileSize: number, requestedSize?: number): number {
     if (!requestedSize) {
-      // For small files, use smaller chunks
-      if (fileSize < 5 * 1024 * 1024) {  // < 5MB
+      if (fileSize < 5 * 1024 * 1024) {
         return Math.min(DEFAULT_CHUNK_SIZE, fileSize);
       }
-      // For larger files, scale chunk size with file size
       return Math.min(Math.ceil(fileSize / 100), MAX_CHUNK_SIZE);
     }
-    
     return Math.min(requestedSize, MAX_CHUNK_SIZE);
   }
 
@@ -34,27 +22,29 @@ class UploadService {
     chunk: Blob,
     fileName: string,
     chunkIndex: number,
-    totalChunks: number
-  ) {
+    totalChunks: number,
+    fileId?: string
+  ): Promise<UploadResponse> {
     const formData = new FormData();
     formData.append("file", chunk, fileName);
     formData.append("chunkIndex", chunkIndex.toString());
     formData.append("totalChunks", totalChunks.toString());
+    if (fileId) {
+      formData.append("fileId", fileId);
+    }
 
-    return axios.post("http://localhost:8080/upload-chunk", formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    });
+    const response = await axios.post<UploadResponse>(
+      "http://localhost:8080/upload-chunk",
+      formData
+    );
+    return response.data;
   }
 
-  async uploadFile(
-    file: File, 
-    onProgress: ProgressCallback, 
-    options: UploadOptions = {}
-  ) {
-    const chunkSize = this.calculateChunkSize(file.size, options.chunkSize);
+  async uploadFile(file: File, onProgress: ProgressCallback): Promise<UploadResponse> {
+    const chunkSize = this.calculateChunkSize(file.size);
     const chunks = Math.ceil(file.size / chunkSize);
+    let fileId: string | undefined;
+    let lastResponse: UploadResponse;
 
     for (let i = 0; i < chunks; i++) {
       const chunk = file.slice(
@@ -62,23 +52,26 @@ class UploadService {
         Math.min((i + 1) * chunkSize, file.size)
       );
 
-      await this.uploadChunk(chunk, file.name, i, chunks);
+      lastResponse = await this.uploadChunk(chunk, file.name, i, chunks, fileId);
+      fileId = lastResponse.fileId;
 
       onProgress({
         fileName: file.name,
-        progress: ((i + 1) / chunks) * 100
+        progress: ((i + 1) / chunks) * 100,
       });
     }
+
+    return lastResponse!;
   }
 
   async uploadFiles(
-    files: File[], 
+    files: File[],
     onProgress: ProgressCallback,
     options?: UploadOptions
-  ) {
-    for (const file of files) {
-      await this.uploadFile(file, onProgress, options);
-    }
+  ): Promise<UploadResponse[]> {
+    return Promise.all(
+      files.map((file) => this.uploadFile(file, onProgress))
+    );
   }
 }
 
