@@ -10,11 +10,11 @@ import (
     "time"
 
     "backend/config"
-    "go.mongodb.org/mongo-driver/mongo"
     "backend/internal/repository"
     "backend/internal/service"
     "backend/api"
     "backend/middleware"
+    "go.mongodb.org/mongo-driver/mongo"
 )
 
 func main() {
@@ -26,7 +26,8 @@ func main() {
     if err != nil {
         log.Fatalf("Failed to connect to MongoDB: %v", err)
     }
-    // Initialize MinIO client
+    
+    // Initialize MinIO client (kept for future use)
     minioClient, err := config.ConnectMinIO()
     if err != nil {
         log.Fatalf("Failed to connect to MinIO: %v", err)
@@ -41,22 +42,22 @@ func main() {
     // Initialize repositories and services
     fileRepo := repository.NewFileRepository(client)
     fileService := service.NewFileService(fileRepo)
+    chunkRepo := repository.NewChunkRepository(client)
 
     // Create router and register API routes
     bucket := os.Getenv("MINIO_BUCKET_NAME")
-    router := api.NewRouter(fileService, minioClient, bucket)
+    router := api.NewRouter(fileService, minioClient, chunkRepo,fileRepo, bucket)
+
+    // Configure CORS middleware
+    corsMiddleware := middleware.CORS(router)
 
     // Start the HTTP server
     port := os.Getenv("SERVER_PORT")
     if port == "" {
-        port = "8080" // Default to port 8080
+        port = "8080"
     }
-    corsRouter := middleware.CORS(router) // Wrap the router with CORS middleware
 
-// Update the server start to use corsRouter
-server := startServer(corsRouter, port)
-
-    // Handle graceful shutdown
+    server := startServer(corsMiddleware, port)
     gracefulShutdown(server)
 }
 

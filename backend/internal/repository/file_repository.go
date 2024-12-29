@@ -7,6 +7,8 @@ import (
     "log"
 
     "go.mongodb.org/mongo-driver/mongo"
+    "go.mongodb.org/mongo-driver/bson"
+    "go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 // FileRepository is a struct that holds the MongoDB collection for file metadata.
@@ -42,4 +44,40 @@ func (r *FileRepository) Create(ctx context.Context, file *models.FileMetadata) 
     // Log the success of the operation
     log.Printf("Successfully inserted file metadata: %+v", file)
     return nil
+}
+
+// In internal/repository/file_repository.go
+// Add new method that matches the handler's call
+
+func (r *FileRepository) CreateFile(ctx context.Context, file *models.File) error {
+    // Convert File to FileMetadata
+    metadata := &models.FileMetadata{
+        ID:        file.ID,
+        FileName:  file.FileName,
+        FileType:  file.FileType,
+        Size:      file.Size,
+        UploadedAt: file.CreatedAt,
+        Complete:  file.Complete,
+    }
+    return r.Create(ctx, metadata)
+}
+
+// internal/repository/file_repository.go
+
+func (r *FileRepository) GetFileByID(ctx context.Context, fileID string) (*models.File, error) {
+    objectID, err := primitive.ObjectIDFromHex(fileID)
+    if err != nil {
+        return nil, fmt.Errorf("invalid file ID format: %w", err)
+    }
+
+    var file models.File
+    err = r.collection.FindOne(ctx, bson.M{"_id": objectID}).Decode(&file)
+    if err != nil {
+        if err == mongo.ErrNoDocuments {
+            return nil, fmt.Errorf("file not found")
+        }
+        return nil, fmt.Errorf("error retrieving file: %w", err)
+    }
+
+    return &file, nil
 }

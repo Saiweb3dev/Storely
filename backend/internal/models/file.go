@@ -1,3 +1,5 @@
+// internal/models/file.go
+
 package models
 
 import (
@@ -7,8 +9,9 @@ import (
 
 type FileMetadata struct {
     ID          primitive.ObjectID `bson:"_id,omitempty" json:"id"`
-    Filename    string            `bson:"filename" json:"filename"`
+    FileName    string            `bson:"file_name" json:"fileName"`
+    FileType    string            `bson:"file_type" json:"fileType"`
     Size        int64             `bson:"size" json:"size"`
-    ContentType string            `bson:"content_type" json:"content_type"`
-    UploadedAt  time.Time         `bson:"uploaded_at" json:"uploaded_at"`
+    UploadedAt  time.Time         `bson:"uploaded_at" json:"uploadedAt"`
+    Complete    bool              `bson:"complete" json:"complete"`
 }
