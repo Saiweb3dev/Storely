@@ -87,20 +87,36 @@ export default function FileUpload() {
     }
   };
 
-  const handleMinIOUploadComplete = ({ fileId, name, type, size }: {
-    fileId: string;
-    name: string;
-    type: string;
-    size: number;
-  }) => {
-    addUploads([{
-      fileId,
-      fileName: name,
-      fileType: type,
-      uploadedAt: new Date(),
-      size,
-    }]);
-  };
+  // const handleMinIOUploadComplete = ({ fileId, name, type, size }: {
+  //   fileId: string;
+  //   name: string;
+  //   type: string;
+  //   size: number;
+  // }) => {
+  //   addUploads([{
+  //     fileId,
+  //     fileName: name,
+  //     fileType: type,
+  //     uploadedAt: new Date(),
+  //     size,
+  //   }]);
+  // };
+
+  const handleDirectProgress = (info: UploadProgressInfo) => {
+    setUploadProgress([info]) // or track multiple if needed
+  }
+
+  // Handle completion from direct MinIO
+  const handleDirectComplete = (upload: RecentUpload) => {
+    addUploads([upload])
+    setFiles([])
+    setUploadProgress([])
+  }
+
+  // Handle errors from direct MinIO
+  const handleDirectError = (message: string) => {
+    setError(message)
+  }
 
   return (
     <motion.div 
@@ -216,26 +232,17 @@ export default function FileUpload() {
         )}
       </AnimatePresence>
 
-      <div className="flex flex-col gap-2 p-4"> {/* Added container for buttons */}
-  <motion.button
-    onClick={handleUpload}
-    disabled={isUploading || files.length === 0}
-    className={`
-      w-full px-4 py-2 rounded-md font-medium transition-colors duration-200
-      ${isUploading || files.length === 0
-        ? 'bg-gray-300 cursor-not-allowed'
-        : 'bg-blue-500 hover:bg-blue-600 text-white'}
-    `}
-    whileHover={{ scale: 1.05 }}
-    whileTap={{ scale: 0.95 }}
-  >
-    {isUploading ? 'Uploading...' : 'Upload Files'}
-  </motion.button>
-  
-  <MinIODirectUpload
-    onUploadComplete={handleMinIOUploadComplete}
-    onError={setError}
+      <div className="flex flex-col gap-2 p-4"> 
+
+     <MinIODirectUpload
+    file={files[0]}
+    onProgress={handleDirectProgress}
+    onComplete={handleDirectComplete}
+    onError={handleDirectError}
   />
+
+  
+ 
 </div>
     </motion.div>
   )

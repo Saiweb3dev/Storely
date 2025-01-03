@@ -1,99 +1,84 @@
-import React, { useState } from 'react';
-import axios from 'axios';
+// components/MinIODirectUpload.tsx
+// Handles direct upload to MinIO. Reusable on any page or parent component.
+"use client"
+import axios from "axios"
+import { useState } from "react"
+import { UploadProgressInfo } from "@/types/minio"
+import type { RecentUpload } from "@/types/upload"
 
 interface MinIODirectUploadProps {
-  onUploadComplete: (info: {
-    fileId: string;
-    name: string;
-    type: string;
-    size: number;
-  }) => void;
-  onError: (error: string) => void;
+  file: File          // The file to upload
+  onProgress: (info: UploadProgressInfo) => void
+  onComplete: (upload: RecentUpload) => void
+  onError: (message: string) => void
 }
- const MinIODirectUpload: React.FC<MinIODirectUploadProps> = ({ onUploadComplete, onError }) => {
-  const [isUploading, setIsUploading] = useState(false);
-  const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks
 
-  const handleDirectUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+const CHUNK_SIZE = 5 * 1024 * 1024
 
-    setIsUploading(true);
+export default function MinIODirectUpload({
+  file,
+  onProgress,
+  onComplete,
+  onError,
+}: MinIODirectUploadProps) {
+  const [uploading, setUploading] = useState(false)
+
+  const uploadToMinIO = async () => {
+    if (!file) return
+    setUploading(true)
     try {
       // Initialize upload
-      const response = await axios.post<MinIOUploadResponse>('http://localhost:8080/api/minio/files/init', {
+      const initRes = await axios.post("http://localhost:8080/api/minio/files/init", {
         fileName: file.name,
         fileType: file.type,
         fileSize: file.size,
-        totalChunks: Math.ceil(file.size / CHUNK_SIZE)
-      });
+        totalChunks: Math.ceil(file.size / CHUNK_SIZE),
+      })
 
-      const { fileId, uploadUrls, callbackUrl } = response.data;
+      const { fileId, uploadUrls, callbackUrl } = initRes.data
+      let completedChunks = 0
 
-// if (callbackUrl) {
-//   const fullCallbackUrl = new URL(callbackUrl, "http://localhost:8080").toString();
-//   console.log(fullCallbackUrl);
-// } else {
-//   console.error("callbackUrl is undefined or missing in response.data");
-// }
+      // Upload all chunks
+      for (let i = 0; i < uploadUrls.length; i++) {
+        const { uploadUrl } = uploadUrls[i]
+        const start = i * CHUNK_SIZE
+        const end = Math.min(start + CHUNK_SIZE, file.size)
+        const chunk = file.slice(start, end)
+        await axios.put(uploadUrl, chunk, { headers: { "Content-Type": file.type } })
+        completedChunks++
+        onProgress({
+          fileName: file.name,
+          progress: (completedChunks / uploadUrls.length) * 100,
+        })
+      }
 
+      // Complete upload
+      await axios.post(callbackUrl)
 
-
-      // Split file into chunks and upload directly to MinIO
-      const uploadPromises = uploadUrls.map(async ({ chunkIndex, uploadUrl }, index) => {
-        const start = index * CHUNK_SIZE;
-        const end = Math.min(start + CHUNK_SIZE, file.size);
-        const chunk = file.slice(start, end);
-
-        await axios.put(uploadUrl, chunk, {
-          headers: { 'Content-Type': file.type }
-        });
-      });
-      console.log("uploadPromises",uploadPromises);
-
-      await Promise.all(uploadPromises);
-
-      // Notify backend of completion
-      console.log("Calling callbackUrl",callbackUrl);
-      await axios.post(callbackUrl);
-      onUploadComplete({
+      onComplete({
         fileId,
-        name: file.name,
-        type: file.type,
+        fileName: file.name,
+        fileType: file.type,
+        uploadedAt: new Date(),
         size: file.size,
-      });
-
-    } catch (error) {
-      onError(error instanceof Error ? error.message : 'Upload failed');
+      })
+    } catch (err: any) {
+      onError(err.message || "MinIO upload failed")
     } finally {
-      setIsUploading(false);
+      setUploading(false)
     }
-  };
+  }
 
   return (
-    <div className="minio-direct-upload mt-4"> {/* Added margin-top */}
-    <input
-      type="file"
-      onChange={handleDirectUpload}
-      disabled={isUploading}
-      style={{ display: 'none' }}
-      id="minio-file-input"
-    />
-    <label 
-      htmlFor="minio-file-input"
-      className={`
-        w-full px-4 py-2 rounded-md font-medium transition-colors duration-200 block text-center
-        ${isUploading 
-          ? 'bg-gray-300 cursor-not-allowed' 
-          : 'bg-green-500 hover:bg-green-600 text-white cursor-pointer'
-        }
-      `}
+    <button
+      onClick={uploadToMinIO}
+      disabled={!file || uploading}
+      className={` text-white px-4 py-2 rounded ${!file || uploading
+        ? 'bg-gray-300 cursor-not-allowed'
+        : 'bg-blue-500 hover:bg-blue-600 text-white'}
+    `}
     >
-      {isUploading ? 'Uploading...' : 'Direct Upload to MinIO'}
-    </label>
-  </div>
-  );
-};
-
-
-export default MinIODirectUpload;
+      {uploading ? "Uploading..." : "Upload Files Direct"}
+    </button>
+  )
+}

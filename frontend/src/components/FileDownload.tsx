@@ -1,56 +1,123 @@
+// FileDownload.tsx
 "use client"
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Download, AlertCircle } from 'lucide-react'
+import { XMLParser } from 'fast-xml-parser'
+
+interface MinIOError {
+  Error: {
+    Code: string
+    Message: string
+    Key: string
+    BucketName: string
+  }
+}
 
 const FileDownload = () => {
   const [fileId, setFileId] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [progress, setProgress] = useState<number>(0)
 
-  const handleDownload = async () => {
-    setLoading(true)
-    setError(null)
-
+  const parseMinIOError = async (response: Response): Promise<string> => {
+    const text = await response.text()
     try {
-      const response = await fetch(`http://localhost:8080/files/${fileId}`, {
-        headers: {
-          'Accept': '*/*' // Accept any content type
-        }
-      })
-      if (!response.ok) throw new Error('Download failed')
-
-      // Get content type and filename from headers
-      const contentType = response.headers.get('Content-Type') || 'application/octet-stream'
-      const disposition = response.headers.get('Content-Disposition')
-      
-      // Extract filename with extension from Content-Disposition
-      let filename = 'downloaded-file'
-      if (disposition) {
-        const matches = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/.exec(disposition)
-        if (matches != null && matches[1]) {
-          filename = matches[1].replace(/['"]/g, '')
-        }
-      }
-  
-      const blob = await response.blob()
-      const blobWithType = new Blob([blob], { type: contentType })
-      const url = window.URL.createObjectURL(blobWithType)
-  
-      const link = document.createElement('a')
-      link.href = url
-      link.setAttribute('download', filename) // Use original filename with extension
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
-      window.URL.revokeObjectURL(url)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Download failed')
-    } finally {
-      setLoading(false)
+      const parser = new XMLParser()
+      const result = parser.parse(text) as MinIOError
+      return `MinIO Error: ${result.Error.Message} (Code: ${result.Error.Code})`
+    } catch {
+      return text
     }
   }
+// FileDownload.tsx
+const handleDownload = async () => {
+  setLoading(true)
+  setError(null)
+  setProgress(0)
 
+  try {
+    const response = await fetch(`http://localhost:8080/files/minio/${fileId}`)
+    
+    if (!response.ok) {
+      const errorMessage = await parseMinIOError(response)
+      throw new Error(errorMessage)
+    }
+
+    const data = await response.json()
+    console.log('File metadata received:', data)
+
+    if (!data.downloadUrls || !data.downloadUrls.length) {
+      throw new Error('No download URLs provided')
+    }
+
+    // Create array to store chunks in correct order
+    const orderedChunks: Blob[] = new Array(data.downloadUrls.length)
+    
+    // Download chunks with retries
+    const downloadChunk = async (url: string, index: number, retries = 3): Promise<void> => {
+      try {
+        const chunkResponse = await fetch(url)
+        if (!chunkResponse.ok) throw new Error(`Failed to download chunk ${index}`)
+        
+        const blob = await chunkResponse.blob()
+        orderedChunks[index] = blob
+        
+        setProgress((orderedChunks.filter(Boolean).length / data.downloadUrls.length) * 100)
+      } catch (error) {
+        if (retries > 0) {
+          console.log(`Retrying chunk ${index}, ${retries} attempts remaining`)
+          await downloadChunk(url, index, retries - 1)
+        } else {
+          throw error
+        }
+      }
+    }
+
+    // Process chunks in batches to avoid memory issues
+    const BATCH_SIZE = 10
+    for (let i = 0; i < data.downloadUrls.length; i += BATCH_SIZE) {
+      const batch = data.downloadUrls
+        .slice(i, i + BATCH_SIZE)
+        .map((url: string, batchIndex: number) => 
+          downloadChunk(url, i + batchIndex)
+        )
+      
+      await Promise.all(batch)
+    }
+
+    // Verify all chunks downloaded successfully
+    if (orderedChunks.some(chunk => !chunk)) {
+      throw new Error('Some chunks failed to download')
+    }
+
+    // Combine chunks in correct order
+    const completeFile = new Blob(orderedChunks, { type: data.fileType })
+    
+    // Create download link
+    const url = window.URL.createObjectURL(completeFile)
+    const link = document.createElement('a')
+    link.style.display = 'none'
+    link.href = url
+    link.download = data.fileName
+    
+    document.body.appendChild(link)
+    link.click()
+    
+    // Cleanup
+    window.URL.revokeObjectURL(url)
+    link.remove()
+    orderedChunks.length = 0 // Clear array to free memory
+    
+    console.log('Download completed:', data.fileName)
+
+  } catch (err) {
+    console.error('Download failed:', err)
+    setError(err instanceof Error ? err.message : 'Download failed')
+  } finally {
+    setLoading(false)
+  }
+}
   return (
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
@@ -82,20 +149,17 @@ const FileDownload = () => {
           className="flex-1 text-gray-800 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           disabled={loading}
         />
-        
-        <motion.button
+        <button
           onClick={handleDownload}
-          disabled={loading || !fileId.trim()}
-          className={`px-4 py-2 rounded-md font-medium transition-colors duration-200
-            ${loading || !fileId.trim()
+          disabled={loading || !fileId}
+          className={`px-4 py-2 rounded-md ${
+            loading || !fileId 
               ? 'bg-gray-300 cursor-not-allowed'
               : 'bg-blue-500 hover:bg-blue-600 text-white'
-            }`}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
+          }`}
         >
           {loading ? 'Downloading...' : 'Download'}
-        </motion.button>
+        </button>
       </motion.div>
 
       {error && (
@@ -109,9 +173,23 @@ const FileDownload = () => {
           {error}
         </motion.div>
       )}
+
+      {loading && progress > 0 && (
+        <motion.div className="mt-4">
+          <div className="w-full bg-gray-200 rounded-full h-2">
+            <motion.div
+              className="bg-blue-500 h-2 rounded-full"
+              initial={{ width: 0 }}
+              animate={{ width: `${progress}%` }}
+            />
+          </div>
+          <p className="text-sm text-gray-600 text-center mt-2">
+            {Math.round(progress)}%
+          </p>
+        </motion.div>
+      )}
     </motion.div>
   )
 }
 
 export default FileDownload
-
