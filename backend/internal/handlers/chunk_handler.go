@@ -20,10 +20,11 @@ import (
     "bytes"
 )
 type ChunkHandler struct {
-    chunkRepo *repository.ChunkRepository
-    fileRepo  *repository.FileRepository 
-    minioClient *minio.Client
-    bucketName  string
+    chunkRepo    *repository.ChunkRepository
+    fileRepo     *repository.FileRepository
+    minioRepo    *repository.MinIOFileRepository  // ← Add this
+    minioClient  *minio.Client
+    bucketName   string
 }
 
 type ErrorResponse struct {
@@ -38,10 +39,17 @@ type ChunkUploadResponse struct {
     ChunksReceived int `json:"chunksReceived"`
 }
 
-func NewChunkHandler(chunkRepo *repository.ChunkRepository, fileRepo *repository.FileRepository, minioClient *minio.Client, bucketName string) *ChunkHandler {
+func NewChunkHandler(
+    chunkRepo *repository.ChunkRepository,
+    fileRepo *repository.FileRepository,
+    minioRepo *repository.MinIOFileRepository,   // ← Add param
+    minioClient *minio.Client,
+    bucketName string,
+) *ChunkHandler {
     return &ChunkHandler{
-        chunkRepo: chunkRepo,
-        fileRepo:  fileRepo,
+        chunkRepo:   chunkRepo,
+        fileRepo:    fileRepo,
+        minioRepo:   minioRepo,                    // ← Store it
         minioClient: minioClient,
         bucketName:  bucketName,
     }
@@ -229,40 +237,46 @@ func (h *ChunkHandler) GetCompleteFile(w http.ResponseWriter, r *http.Request) {
     log.Printf("Successfully served file: %s (%s)", file.FileName, fileId)
 }
 
+// handlers/chunk_handler.go
+// handlers/chunk_handler.go
 func (h *ChunkHandler) GetFileFromMinIO(w http.ResponseWriter, r *http.Request) {
     vars := mux.Vars(r)
     fileID := vars["fileId"]
 
-    // Get file metadata to know total chunks
-    fileMetadata, err := h.fileRepo.GetFileByID(r.Context(), fileID)
+    fileMetadata, err := h.minioRepo.GetFileByID_MinIO(r.Context(), fileID)
     if err != nil {
+        log.Printf("Error getting file metadata: %v", err)
         http.Error(w, "File not found", http.StatusNotFound)
         return
     }
 
-    // Set response headers
-    w.Header().Set("Content-Type", fileMetadata.FileType)
-    w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", fileMetadata.FileName))
-
-    // Stream chunks from MinIO in order
+    var downloadUrls []string
+    // Generate presigned URLs for each chunk
     for i := 0; i < fileMetadata.TotalChunks; i++ {
         objectName := fmt.Sprintf("%s/chunk_%d", fileID, i)
-        
-        obj, err := h.minioClient.GetObject(
+        presignedURL, err := h.minioClient.PresignedGetObject(
             r.Context(),
             h.bucketName,
             objectName,
-            minio.GetObjectOptions{},
+            time.Hour,
+            nil,
         )
         if err != nil {
-            http.Error(w, "Failed to retrieve chunk from MinIO", http.StatusInternalServerError)
+            log.Printf("Error generating presigned URL for chunk %d: %v", i, err)
+            http.Error(w, "Failed to generate download URLs", http.StatusInternalServerError)
             return
         }
-        
-        _, err = io.Copy(w, obj)
-        if err != nil {
-            http.Error(w, "Failed to write chunk to response", http.StatusInternalServerError)
-            return
-        }
+        downloadUrls = append(downloadUrls, presignedURL.String())
     }
+
+    response := map[string]interface{}{
+        "downloadUrls": downloadUrls,
+        "fileName":    fileMetadata.FileName,
+        "fileType":    fileMetadata.FileType,
+        "totalChunks": fileMetadata.TotalChunks,
+        "expiresIn":   "1 hour",
+    }
+
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(response)
 }

@@ -33,7 +33,7 @@ func NewRouter(
     router.HandleFunc("/api/minio/files/{fileId}/complete", minioFileHandler.CompleteMinIOUpload).Methods("POST")
 
     // Chunk Upload Endpoints
-    chunkHandler := handlers.NewChunkHandler(chunkRepo,fileRepo, minioClient, bucket)
+    chunkHandler := handlers.NewChunkHandler(chunkRepo,fileRepo, minioRepo, minioClient, bucket)
     router.HandleFunc("/upload-chunk", chunkHandler.HandleChunkUpload).Methods("POST", "OPTIONS")
     router.HandleFunc("/files/{fileId}", chunkHandler.GetCompleteFile).Methods("GET")
     router.HandleFunc("/files/minio/{fileId}", chunkHandler.GetFileFromMinIO).Methods("GET")
