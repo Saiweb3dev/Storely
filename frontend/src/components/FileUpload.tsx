@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Upload, X, AlertCircle, File } from 'lucide-react'
 import { RecentUpload, UploadProgressInfo } from '@/types/upload'
 import { useUploads } from '@/contexts/UploadsContext';
+import MinIODirectUpload from './MinIODirectUpload'
 interface FileWithPreview extends File {
   preview: string;
 }
@@ -84,6 +85,21 @@ export default function FileUpload() {
     } finally {
       setIsUploading(false);
     }
+  };
+
+  const handleMinIOUploadComplete = ({ fileId, name, type, size }: {
+    fileId: string;
+    name: string;
+    type: string;
+    size: number;
+  }) => {
+    addUploads([{
+      fileId,
+      fileName: name,
+      fileType: type,
+      uploadedAt: new Date(),
+      size,
+    }]);
   };
 
   return (
@@ -200,20 +216,27 @@ export default function FileUpload() {
         )}
       </AnimatePresence>
 
-      <motion.button
-        onClick={handleUpload}
-        disabled={isUploading || files.length === 0}
-        className={`
-          mt-6 w-full px-4 py-2 rounded-md font-medium transition-colors duration-200
-          ${isUploading || files.length === 0
-            ? 'bg-gray-300 cursor-not-allowed'
-            : 'bg-blue-500 hover:bg-blue-600 text-white'}
-        `}
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-      >
-        {isUploading ? 'Uploading...' : 'Upload Files'}
-      </motion.button>
+      <div className="flex flex-col gap-2 p-4"> {/* Added container for buttons */}
+  <motion.button
+    onClick={handleUpload}
+    disabled={isUploading || files.length === 0}
+    className={`
+      w-full px-4 py-2 rounded-md font-medium transition-colors duration-200
+      ${isUploading || files.length === 0
+        ? 'bg-gray-300 cursor-not-allowed'
+        : 'bg-blue-500 hover:bg-blue-600 text-white'}
+    `}
+    whileHover={{ scale: 1.05 }}
+    whileTap={{ scale: 0.95 }}
+  >
+    {isUploading ? 'Uploading...' : 'Upload Files'}
+  </motion.button>
+  
+  <MinIODirectUpload
+    onUploadComplete={handleMinIOUploadComplete}
+    onError={setError}
+  />
+</div>
     </motion.div>
   )
 }

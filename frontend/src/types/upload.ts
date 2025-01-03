@@ -17,6 +17,7 @@ export interface RecentUpload {
   fileName: string;
   fileType: string;
   uploadedAt: Date;
+  size?: number; // Add size here
 }
 
 export interface UploadOptions {

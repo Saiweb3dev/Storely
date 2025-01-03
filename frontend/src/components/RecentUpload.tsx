@@ -29,6 +29,11 @@ export default function RecentUploads() {
     }).format(date);
   };
 
+  const formatSize = (size: number) => {
+    // convert to KB
+    return `${(size / 1024).toFixed(2)} KB`;
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -61,6 +66,7 @@ export default function RecentUploads() {
                     <span>{upload.fileType}</span>
                     <span>•</span>
                     <span>{formatDate(new Date(upload.uploadedAt))}</span>
+                    <span> {upload.size && <p>Size: {formatSize(upload.size)}</p>}</span>
                   </div>
                 </div>
               </div>
