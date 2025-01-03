@@ -15,3 +15,4 @@ type FileMetadata struct {
     UploadedAt  time.Time         `bson:"uploaded_at" json:"uploadedAt"`
     Complete    bool              `bson:"complete" json:"complete"`
 }
+

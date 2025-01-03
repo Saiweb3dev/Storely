@@ -7,9 +7,11 @@ import (
     "backend/internal/repository"
     "github.com/gorilla/mux"
     "github.com/minio/minio-go/v7"
+    "go.mongodb.org/mongo-driver/mongo"
 )
 
 func NewRouter(
+    mongoClient *mongo.Client,
     fileService *service.FileService,
     minioClient *minio.Client,
     chunkRepo *repository.ChunkRepository,
@@ -22,16 +24,20 @@ func NewRouter(
     fileHandler := handlers.NewFileHandler(fileService)
     router.HandleFunc("/file_metadata", fileHandler.CreateFileMetadata).Methods("POST")
 
-    // MinIO File Upload Endpoint (kept for future use)
-    endpoint := "http://localhost:9000"
-    minioService := service.NewMinIOService(minioClient, bucket, endpoint)
-    minioHandler := handlers.NewMinIOHandler(minioService)
-    router.HandleFunc("/upload", minioHandler.UploadFile).Methods("POST")
+    // Initialize MinIO repository and handler
+    minioRepo := repository.NewMinIOFileRepository(mongoClient)
+    minioFileHandler := handlers.NewMinIOFileHandler(minioRepo, minioClient, bucket)
+    
+    // MinIO specific routes
+    router.HandleFunc("/api/minio/files/init", minioFileHandler.InitializeMinIOUpload).Methods("POST")
+    router.HandleFunc("/api/minio/files/{fileId}/complete", minioFileHandler.CompleteMinIOUpload).Methods("POST")
 
     // Chunk Upload Endpoints
-    chunkHandler := handlers.NewChunkHandler(chunkRepo,fileRepo)
+    chunkHandler := handlers.NewChunkHandler(chunkRepo,fileRepo, minioClient, bucket)
     router.HandleFunc("/upload-chunk", chunkHandler.HandleChunkUpload).Methods("POST", "OPTIONS")
     router.HandleFunc("/files/{fileId}", chunkHandler.GetCompleteFile).Methods("GET")
+    router.HandleFunc("/files/minio/{fileId}", chunkHandler.GetFileFromMinIO).Methods("GET")
+
 
     return router
 }

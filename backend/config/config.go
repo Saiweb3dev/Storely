@@ -5,6 +5,7 @@ import (
     "log"
     "time"
     "os"
+    "fmt"
 
     "github.com/joho/godotenv"
     "go.mongodb.org/mongo-driver/mongo"
@@ -57,24 +58,68 @@ func ConnectDB() (*mongo.Client, error) {
 }
 
 //Connection to MinIO client
-func ConnectMinIO() (*minio.Client,error) {
+// In config/config.go
+func ConnectMinIO() (*minio.Client, error) {
     endpoint := os.Getenv("MINIO_ENDPOINT")
     accessKey := os.Getenv("MINIO_ACCESS_KEY")
     secretKey := os.Getenv("MINIO_SECRET_KEY")
+    bucketName := os.Getenv("MINIO_BUCKET_NAME")
 
     if endpoint == "" || accessKey == "" || secretKey == "" {
-        log.Fatal("MINIO_ENDPOINT, MINIO_ACCESS_KEY, and MINIO_SECRET_KEY are not set in the environment variables")
+        log.Fatal("MinIO environment variables not set")
     }
 
+    // Initialize MinIO client with HTTP
     client, err := minio.New(endpoint, &minio.Options{
-        Creds: credentials.NewStaticV4(accessKey, secretKey, ""),
-        Secure: true,
+        Creds:  credentials.NewStaticV4(accessKey, secretKey, ""),
+        Secure: false,  // Set to false for HTTP
     })
-
     if err != nil {
-        return nil, err
+        return nil, fmt.Errorf("failed to create MinIO client: %w", err)
     }
 
-    log.Printf("Connected to MinIO at %s", endpoint)
+    // Create bucket if it doesn't exist
+    exists, err := client.BucketExists(context.Background(), bucketName)
+    if err != nil {
+        return nil, fmt.Errorf("failed to check bucket existence: %w", err)
+    }
+
+    if !exists {
+        err = client.MakeBucket(context.Background(), bucketName, minio.MakeBucketOptions{})
+        if err != nil {
+            return nil, fmt.Errorf("failed to create bucket: %w", err)
+        }
+        log.Printf("Created new bucket: %s", bucketName)
+        
+        // Set bucket policy
+        if err := setPublicBucketPolicy(client, bucketName); err != nil {
+            log.Printf("Warning: Failed to set bucket policy: %v", err)
+        }
+    }
+
+    log.Printf("Successfully connected to MinIO at %s", endpoint)
     return client, nil
+}
+
+// Add this function to config.go
+func setPublicBucketPolicy(client *minio.Client, bucketName string) error {
+    policy := `{
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Principal": {"AWS": ["*"]},
+                "Action": ["s3:GetBucketLocation", "s3:ListBucket", "s3:ListBucketMultipartUploads"],
+                "Resource": ["arn:aws:s3:::` + bucketName + `"]
+            },
+            {
+                "Effect": "Allow",
+                "Principal": {"AWS": ["*"]},
+                "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
+                "Resource": ["arn:aws:s3:::` + bucketName + `/*"]
+            }
+        ]
+    }`
+
+    return client.SetBucketPolicy(context.Background(), bucketName, policy)
 }

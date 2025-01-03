@@ -14,6 +14,8 @@ type FileHandler struct {
     service *service.FileService // Dependency on the service layer for business logic
 }
 
+
+
 // NewFileHandler creates a new instance of FileHandler.
 // It accepts a FileService as a dependency.
 func NewFileHandler(service *service.FileService) *FileHandler {

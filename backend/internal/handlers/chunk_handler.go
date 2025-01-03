@@ -5,6 +5,7 @@ import (
     "fmt"
     "io"
     "encoding/json"
+    "encoding/base64"
 	"log"
     "net/http"
     "strconv"
@@ -12,15 +13,23 @@ import (
     "backend/internal/models"
     "backend/internal/repository"
     "github.com/gorilla/mux"
+    "github.com/minio/minio-go/v7"
     "go.mongodb.org/mongo-driver/bson/primitive"
     "sort"
+    "context"
+    "bytes"
 )
 type ChunkHandler struct {
     chunkRepo *repository.ChunkRepository
-    fileRepo  *repository.FileRepository  // Add FileRepository
+    fileRepo  *repository.FileRepository 
+    minioClient *minio.Client
+    bucketName  string
 }
 
-
+type ErrorResponse struct {
+    Error   string `json:"error"`
+    Details string `json:"details"`
+}
 type ChunkUploadResponse struct {
     FileID      string `json:"fileId"`
     FileName    string `json:"fileName"`
@@ -29,10 +38,12 @@ type ChunkUploadResponse struct {
     ChunksReceived int `json:"chunksReceived"`
 }
 
-func NewChunkHandler(chunkRepo *repository.ChunkRepository, fileRepo *repository.FileRepository) *ChunkHandler {
+func NewChunkHandler(chunkRepo *repository.ChunkRepository, fileRepo *repository.FileRepository, minioClient *minio.Client, bucketName string) *ChunkHandler {
     return &ChunkHandler{
         chunkRepo: chunkRepo,
         fileRepo:  fileRepo,
+        minioClient: minioClient,
+        bucketName:  bucketName,
     }
 }
 
@@ -101,9 +112,34 @@ func (h *ChunkHandler) HandleChunkUpload(w http.ResponseWriter, r *http.Request)
         UploadedAt:  time.Now(),
     }
 
+    // Save to MongoDB
     if err := h.chunkRepo.SaveChunk(r.Context(), chunk); err != nil {
         log.Printf("Error saving chunk: %v", err)
         http.Error(w, "Failed to save chunk", http.StatusInternalServerError)
+        return
+    }
+
+      // Additional MinIO storage
+    chunkData, _ := base64.StdEncoding.DecodeString(string(chunk.Data))
+    objectName := fmt.Sprintf("%s/chunk_%d", chunk.FileID, chunk.ChunkIndex)
+    
+    _, err = h.minioClient.PutObject(
+        context.Background(),
+        h.bucketName,
+        objectName,
+        bytes.NewReader(chunkData),
+        int64(len(chunkData)),
+        minio.PutObjectOptions{},
+    )
+    if err != nil {
+        log.Printf("MinIO storage error: %v", err)
+        errorResponse := ErrorResponse{
+            Error:   "Failed to store chunk in MinIO",
+            Details: err.Error(),
+        }
+        w.Header().Set("Content-Type", "application/json")
+        w.WriteHeader(http.StatusInternalServerError)
+        json.NewEncoder(w).Encode(errorResponse)
         return
     }
 
@@ -191,4 +227,42 @@ func (h *ChunkHandler) GetCompleteFile(w http.ResponseWriter, r *http.Request) {
     }
 
     log.Printf("Successfully served file: %s (%s)", file.FileName, fileId)
+}
+
+func (h *ChunkHandler) GetFileFromMinIO(w http.ResponseWriter, r *http.Request) {
+    vars := mux.Vars(r)
+    fileID := vars["fileId"]
+
+    // Get file metadata to know total chunks
+    fileMetadata, err := h.fileRepo.GetFileByID(r.Context(), fileID)
+    if err != nil {
+        http.Error(w, "File not found", http.StatusNotFound)
+        return
+    }
+
+    // Set response headers
+    w.Header().Set("Content-Type", fileMetadata.FileType)
+    w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", fileMetadata.FileName))
+
+    // Stream chunks from MinIO in order
+    for i := 0; i < fileMetadata.TotalChunks; i++ {
+        objectName := fmt.Sprintf("%s/chunk_%d", fileID, i)
+        
+        obj, err := h.minioClient.GetObject(
+            r.Context(),
+            h.bucketName,
+            objectName,
+            minio.GetObjectOptions{},
+        )
+        if err != nil {
+            http.Error(w, "Failed to retrieve chunk from MinIO", http.StatusInternalServerError)
+            return
+        }
+        
+        _, err = io.Copy(w, obj)
+        if err != nil {
+            http.Error(w, "Failed to write chunk to response", http.StatusInternalServerError)
+            return
+        }
+    }
 }

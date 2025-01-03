@@ -23,4 +23,5 @@ type File struct {
     Size      int64             `bson:"size"`
     CreatedAt time.Time         `bson:"created_at"`
     Complete  bool              `bson:"complete"`
+    TotalChunks int              `bson:"total_chunks"`
 }
