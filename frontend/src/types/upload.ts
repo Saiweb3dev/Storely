@@ -24,3 +24,7 @@ export interface UploadOptions {
   chunkSize?: number;
   maxRetries?: number;
 }
+
+export interface FileWithPreview extends File {
+  preview: string;
+}

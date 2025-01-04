@@ -2,9 +2,10 @@ package repository
 
 import (
     "context"
-    "backend/internal/models"
     "fmt"
     "log"
+
+    "backend/internal/models"
 
     "go.mongodb.org/mongo-driver/mongo"
     "go.mongodb.org/mongo-driver/bson"

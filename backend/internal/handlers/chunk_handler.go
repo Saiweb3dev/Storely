@@ -10,19 +10,21 @@ import (
     "net/http"
     "strconv"
     "time"
+    "context"
+    "bytes"
+
     "backend/internal/models"
     "backend/internal/repository"
+    
     "github.com/gorilla/mux"
     "github.com/minio/minio-go/v7"
     "go.mongodb.org/mongo-driver/bson/primitive"
-    "sort"
-    "context"
-    "bytes"
+
 )
 type ChunkHandler struct {
     chunkRepo    *repository.ChunkRepository
     fileRepo     *repository.FileRepository
-    minioRepo    *repository.MinIOFileRepository  // ← Add this
+    minioRepo    *repository.MinIOFileRepository
     minioClient  *minio.Client
     bucketName   string
 }
@@ -42,14 +44,14 @@ type ChunkUploadResponse struct {
 func NewChunkHandler(
     chunkRepo *repository.ChunkRepository,
     fileRepo *repository.FileRepository,
-    minioRepo *repository.MinIOFileRepository,   // ← Add param
+    minioRepo *repository.MinIOFileRepository, 
     minioClient *minio.Client,
     bucketName string,
 ) *ChunkHandler {
     return &ChunkHandler{
         chunkRepo:   chunkRepo,
         fileRepo:    fileRepo,
-        minioRepo:   minioRepo,                    // ← Store it
+        minioRepo:   minioRepo,                  
         minioClient: minioClient,
         bucketName:  bucketName,
     }
@@ -182,63 +184,7 @@ func (h *ChunkHandler) HandleChunkUpload(w http.ResponseWriter, r *http.Request)
     }
 }
 
-func (h *ChunkHandler) GetCompleteFile(w http.ResponseWriter, r *http.Request) {
-    vars := mux.Vars(r)
-    fileId := vars["fileId"]
-    
-    log.Printf("Attempting to download file with ID: %s", fileId)
 
-    // Get file metadata first
-    file, err := h.fileRepo.GetFileByID(r.Context(), fileId)
-    if err != nil {
-        log.Printf("Error retrieving file metadata: %v", err)
-        http.Error(w, fmt.Sprintf("File not found: %v", err), http.StatusNotFound)
-        return
-    }
-
-    if !file.Complete {
-        log.Printf("File %s is not complete", fileId)
-        http.Error(w, "File upload is not complete", http.StatusBadRequest)
-        return
-    }
-
-    // Get all chunks
-    chunks, err := h.chunkRepo.GetFileChunks(r.Context(), fileId)
-    if err != nil {
-        log.Printf("Error retrieving chunks: %v", err)
-        http.Error(w, "Failed to retrieve file chunks", http.StatusInternalServerError)
-        return
-    }
-
-    if len(chunks) == 0 {
-        log.Printf("No chunks found for file %s", fileId)
-        http.Error(w, "No file data found", http.StatusNotFound)
-        return
-    }
-
-    // Sort chunks by index
-    sort.Slice(chunks, func(i, j int) bool {
-        return chunks[i].ChunkIndex < chunks[j].ChunkIndex
-    })
-
-    // Set response headers
-    w.Header().Set("Content-Type", file.FileType)
-    w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, file.FileName))
-    w.Header().Set("Access-Control-Expose-Headers", "Content-Disposition")
-
-    // Write chunks to response
-    for _, chunk := range chunks {
-        if _, err := w.Write(chunk.Data); err != nil {
-            log.Printf("Error writing chunk data: %v", err)
-            return
-        }
-    }
-
-    log.Printf("Successfully served file: %s (%s)", file.FileName, fileId)
-}
-
-// handlers/chunk_handler.go
-// handlers/chunk_handler.go
 func (h *ChunkHandler) GetFileFromMinIO(w http.ResponseWriter, r *http.Request) {
     vars := mux.Vars(r)
     fileID := vars["fileId"]

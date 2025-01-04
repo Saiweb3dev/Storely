@@ -1,17 +1,8 @@
-// components/MinIODirectUpload.tsx
-// Handles direct upload to MinIO. Reusable on any page or parent component.
 "use client"
 import axios from "axios"
 import { useState } from "react"
-import { UploadProgressInfo } from "@/types/minio"
-import type { RecentUpload } from "@/types/upload"
+import { MinIODirectUploadProps } from "@/types/minio"
 
-interface MinIODirectUploadProps {
-  file: File          // The file to upload
-  onProgress: (info: UploadProgressInfo) => void
-  onComplete: (upload: RecentUpload) => void
-  onError: (message: string) => void
-}
 
 const CHUNK_SIZE = 5 * 1024 * 1024
 

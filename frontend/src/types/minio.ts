@@ -7,6 +7,15 @@ export interface MinIOUploadResponse {
   callbackUrl: string;
 }
 
+export interface MinIOError {
+  Error: {
+    Code: string
+    Message: string
+    Key: string
+    BucketName: string
+  }
+}
+
 export interface RecentUpload {
   fileId: string;
   fileName: string;

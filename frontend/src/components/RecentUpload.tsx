@@ -1,10 +1,11 @@
 // components/RecentUploads.tsx
 "use client"
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { FileIcon, Download, Copy, Check } from 'lucide-react';
+import { FileIcon, Copy, Check } from 'lucide-react';
 import { useUploads } from '@/contexts/UploadsContext';
 import ClearOptions from './ClearOptions';
-import { useState } from 'react';
+
 
 export default function RecentUploads() {
   const { recentUploads } = useUploads();
@@ -81,13 +82,6 @@ export default function RecentUploads() {
                   ) : (
                     <Copy className="h-4 w-4 text-gray-500" />
                   )}
-                </button>
-                <button
-                  onClick={() => window.location.href = `/files/${upload.fileId}`}
-                  className="p-1 hover:bg-gray-200 rounded transition-colors"
-                  title="Download file"
-                >
-                  <Download className="h-4 w-4 text-gray-500" />
                 </button>
               </div>
             </motion.div>

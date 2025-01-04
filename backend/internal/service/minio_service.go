@@ -7,7 +7,7 @@ import (
     "net/url"
     "path"
 
-		"github.com/minio/minio-go/v7"
+	"github.com/minio/minio-go/v7"
 )
 
 type MinIOService struct {

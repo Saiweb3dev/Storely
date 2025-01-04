@@ -1,4 +1,3 @@
-// services/uploadService.ts
 import axios from "axios";
 import { UploadResponse, UploadProgressInfo, UploadOptions } from "../types/upload";
 

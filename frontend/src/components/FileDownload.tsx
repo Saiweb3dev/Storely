@@ -4,15 +4,8 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Download, AlertCircle } from 'lucide-react'
 import { XMLParser } from 'fast-xml-parser'
+import { MinIOError } from '@/types/minio'
 
-interface MinIOError {
-  Error: {
-    Code: string
-    Message: string
-    Key: string
-    BucketName: string
-  }
-}
 
 const FileDownload = () => {
   const [fileId, setFileId] = useState('')
@@ -30,8 +23,8 @@ const FileDownload = () => {
       return text
     }
   }
-// FileDownload.tsx
-const handleDownload = async () => {
+
+  const handleDownload = async () => {
   setLoading(true)
   setError(null)
   setProgress(0)
@@ -117,7 +110,7 @@ const handleDownload = async () => {
   } finally {
     setLoading(false)
   }
-}
+  }
   return (
     <motion.div 
       initial={{ opacity: 0, y: 20 }}

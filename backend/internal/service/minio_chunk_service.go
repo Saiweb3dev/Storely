@@ -5,9 +5,11 @@ import (
     "bytes"
     "context"
     "fmt"
-    "backend/internal/models"
-    "github.com/minio/minio-go/v7"
     "io"
+
+    "backend/internal/models"
+    
+    "github.com/minio/minio-go/v7"
 )
 
 type MinIOChunkService struct {

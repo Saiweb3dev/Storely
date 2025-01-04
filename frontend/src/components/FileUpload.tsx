@@ -1,15 +1,12 @@
 "use client"
 import { useCallback, useState } from 'react'
 import { useDropzone } from 'react-dropzone'
-import { uploadService } from "../service/uploadService"
 import { motion, AnimatePresence } from 'framer-motion'
 import { Upload, X, AlertCircle, File } from 'lucide-react'
-import { RecentUpload, UploadProgressInfo } from '@/types/upload'
+import { RecentUpload, UploadProgressInfo,FileWithPreview } from '@/types/upload'
 import { useUploads } from '@/contexts/UploadsContext';
 import MinIODirectUpload from './MinIODirectUpload'
-interface FileWithPreview extends File {
-  preview: string;
-}
+
 
 export default function FileUpload() {
   const { addUploads } = useUploads();
@@ -44,48 +41,48 @@ export default function FileUpload() {
   }
 
   // Update FileUpload.tsx handleUpload method
-  const handleUpload = async () => {
-    if (files.length === 0) {
-      setError('Please select files to upload');
-      return;
-    }
+  // const handleUpload = async () => {
+  //   if (files.length === 0) {
+  //     setError('Please select files to upload');
+  //     return;
+  //   }
   
-    setIsUploading(true);
-    setError(null);
+  //   setIsUploading(true);
+  //   setError(null);
   
-    try {
-      const updateProgress = (info: UploadProgressInfo) => {
-        setUploadProgress(prev => 
-          prev.map(p => p.fileName === info.fileName ? info : p)
-        );
-      };
+  //   try {
+  //     const updateProgress = (info: UploadProgressInfo) => {
+  //       setUploadProgress(prev => 
+  //         prev.map(p => p.fileName === info.fileName ? info : p)
+  //       );
+  //     };
   
-      setUploadProgress(files.map(f => ({ fileName: f.name, progress: 0 })));
+  //     setUploadProgress(files.map(f => ({ fileName: f.name, progress: 0 })));
       
-      const uploadResults = await uploadService.uploadFiles(files, updateProgress);
+  //     const uploadResults = await uploadService.uploadFiles(files, updateProgress);
   
-      const newUploads: RecentUpload[] = uploadResults.map(result => ({
-        fileId: result.fileId,
-        fileName: result.fileName,
-        fileType: result.fileType,
-        uploadedAt: new Date()
-      }));
+  //     const newUploads: RecentUpload[] = uploadResults.map(result => ({
+  //       fileId: result.fileId,
+  //       fileName: result.fileName,
+  //       fileType: result.fileType,
+  //       uploadedAt: new Date()
+  //     }));
 
-      addUploads(newUploads);
+  //     addUploads(newUploads);
   
-      const stored = localStorage.getItem('recentUploads');
-      const existingUploads: RecentUpload[] = stored ? JSON.parse(stored) : [];
-      const updatedUploads = [...newUploads, ...existingUploads].slice(0, 10);
-      localStorage.setItem('recentUploads', JSON.stringify(updatedUploads));
+  //     const stored = localStorage.getItem('recentUploads');
+  //     const existingUploads: RecentUpload[] = stored ? JSON.parse(stored) : [];
+  //     const updatedUploads = [...newUploads, ...existingUploads].slice(0, 10);
+  //     localStorage.setItem('recentUploads', JSON.stringify(updatedUploads));
   
-      setFiles([]);
-      setUploadProgress([]);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Upload failed');
-    } finally {
-      setIsUploading(false);
-    }
-  };
+  //     setFiles([]);
+  //     setUploadProgress([]);
+  //   } catch (err) {
+  //     setError(err instanceof Error ? err.message : 'Upload failed');
+  //   } finally {
+  //     setIsUploading(false);
+  //   }
+  // };
 
   // const handleMinIOUploadComplete = ({ fileId, name, type, size }: {
   //   fileId: string;
