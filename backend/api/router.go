@@ -17,23 +17,24 @@ func NewRouter(
 	minioClient *minio.Client,
 	chunkRepo *repository.ChunkRepository,
 	fileRepo *repository.FileRepository,
+	userService *service.UserService,
 	bucket string,
 ) *mux.Router {
 	router := mux.NewRouter()
 
-
-	// Initialize MinIO repository and handler
 	minioRepo := repository.NewMinIOFileRepository(mongoClient)
 	minioFileHandler := handlers.NewMinIOFileHandler(minioRepo, minioClient, bucket)
-    chunkHandler := handlers.NewChunkHandler(chunkRepo, fileRepo, minioRepo, minioClient, bucket)
+	chunkHandler := handlers.NewChunkHandler(chunkRepo, fileRepo, minioRepo, minioClient, bucket)
+	userHandler := handlers.NewUserHandler(userService)
 
-	//used externally
 	router.HandleFunc("/upload-chunk", chunkHandler.HandleChunkUpload).Methods("POST", "OPTIONS")
 	router.HandleFunc("/api/minio/files/init", minioFileHandler.InitializeMinIOUpload).Methods("POST")
 	router.HandleFunc("/files/minio/{fileId}", chunkHandler.GetFileFromMinIO).Methods("GET")
-
-    //used internally
-    router.HandleFunc("/api/minio/files/{fileId}/complete", minioFileHandler.CompleteMinIOUpload).Methods("POST")
+	
+	router.HandleFunc("/api/auth/register", userHandler.Register).Methods("POST", "OPTIONS")
+	router.HandleFunc("/api/auth/login", userHandler.Login).Methods("POST", "OPTIONS")
+	
+	router.HandleFunc("/api/minio/files/{fileId}/complete", minioFileHandler.CompleteMinIOUpload).Methods("POST")
 
 	return router
 }

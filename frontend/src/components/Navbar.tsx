@@ -28,7 +28,9 @@ const Navbar = () => {
           </Link>
         </div>
         <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
+          <Link href="/SignIn">
           <User className="h-5 w-5 text-gray-600" />
+          </Link>
         </div>
       </div>
     </nav>
