@@ -1,5 +1,6 @@
 // utils/token.ts
 export const setAuthToken = (token: string) => {
+  console.log("auth Token: ", token)
   localStorage.setItem('authToken', token)
 }
 

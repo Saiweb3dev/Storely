@@ -14,12 +14,18 @@ import (
     "backend/internal/service"
     "backend/api"
     "backend/middleware"
+    "backend/utils/crypto"
     "go.mongodb.org/mongo-driver/mongo"
 )
 
 func main() {
     // Load environment variables
     config.LoadEnv()
+
+    encryptionKey := os.Getenv("ENCRYPTION_KEY")
+    if err := crypto.InitCrypto(encryptionKey); err != nil {
+        log.Fatalf("Failed to initialize crypto: %v", err)
+    }
 
     // Initialize MongoDB client
     client, err := config.ConnectDB()
