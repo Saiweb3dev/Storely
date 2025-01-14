@@ -64,8 +64,8 @@ func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
         Email:        userData.Email,
         Password:     userData.Password,
         IPAddress:    middleware.GetIP(r),
-        StorageUsed:  0,
-        StorageLimit: 10,
+        StorageUsed:  float64(utils.MBToBytes(0)),
+        StorageLimit: float64(utils.MBToBytes(10240)),
         CreatedAt:    time.Now(),
     }
     user.UserID = utils.GenerateUserID(user.Name, user.Email, user.Password)
