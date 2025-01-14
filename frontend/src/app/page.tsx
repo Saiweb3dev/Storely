@@ -2,13 +2,16 @@
 
 import { motion } from 'framer-motion'
 import { Upload, FileText, Share2 } from 'lucide-react'
-
+import { useAuth } from '@/contexts/AuthContext'
 export default function Home() {
   const features = [
     { icon: Upload, title: 'Easy Upload', description: 'Drag and drop files to upload instantly' },
     { icon: FileText, title: 'File Management', description: 'Organize your files with ease' },
     { icon: Share2, title: 'Quick Sharing', description: 'Share files and folders with a single click' },
   ]
+
+  const { isLoggedIn ,userData } = useAuth()
+  console.log(userData)
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-24 bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -18,7 +21,7 @@ export default function Home() {
         transition={{ duration: 0.8 }}
         className="text-center mb-12"
       >
-        <h1 className="text-5xl font-bold text-gray-800 mb-4">Welcome to MiniDrive</h1>
+        <h1 className="text-5xl font-bold text-gray-800 mb-4">Welcome to MiniDrive {isLoggedIn ? userData.username : ''}</h1>
         <p className="text-xl text-gray-600">Your personal cloud storage solution</p>
       </motion.div>
 

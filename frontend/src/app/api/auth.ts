@@ -1,9 +1,8 @@
 // app/api/auth.ts
 import { SignInFormData,SignUpFormData, AuthResponse } from '../../types/auth'
 import { encryptData,decryptData } from '@/utils/encryption';
-import { UserData } from '../../types/auth';
 
-export async function register(data: UserData): Promise<AuthResponse> {
+export async function signUp(data: SignUpFormData): Promise<AuthResponse> {
   try {
     const encryptedData = encryptData(data);
     
@@ -16,17 +15,36 @@ export async function register(data: UserData): Promise<AuthResponse> {
     });
 
     if (!response.ok) {
-      throw new Error('Registration failed');
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Registration failed');
     }
+    console.log("Response: ", response)
 
-    return await response.json();
+    const encrypted = await response.json();
+    if (encrypted.data) {
+      const decrypted = decryptData(encrypted.data);
+
+      console.log("Decrypted: ", decrypted)
+      
+      // Ensure the response matches the AuthResponse interface
+      return {
+        token: decrypted.token,
+        user: {
+          username: decrypted.user?.username || data.username,
+          email: decrypted.user?.email || data.email,
+          storageUsed: decrypted.user?.storageUsed || 0,
+          storageLimit: decrypted.user?.storageLimit || 10
+        }
+      };
+    }
+    throw new Error('Invalid response format');
   } catch (error) {
+    console.error('SignUp error:', error);
     throw error;
   }
 }
 
-// app/api/auth.ts
-export async function signIn(data: Pick<UserData, 'email' | 'password'>): Promise<AuthResponse> {
+export async function signIn(data: Pick<SignInFormData, 'email' | 'password'>): Promise<AuthResponse> {
   try {
     const encryptedData = encryptData(data);
     

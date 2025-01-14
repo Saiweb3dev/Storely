@@ -31,59 +31,91 @@ func NewUserHandler(userService *service.UserService) *UserHandler {
 }
 
 func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
+    // Parse incoming encrypted request
     var encryptedData struct {
         Data string `json:"data"`
     }
-
     if err := json.NewDecoder(r.Body).Decode(&encryptedData); err != nil {
         http.Error(w, "Invalid request format", http.StatusBadRequest)
         return
     }
 
+    // Decrypt the request data
     decryptedData, err := crypto.Decrypt(encryptedData.Data)
     if err != nil {
         http.Error(w, "Failed to decrypt data", http.StatusBadRequest)
         return
     }
 
+    // Parse user registration data
     var userData struct {
-        Name     string `json:"name"`
+        UserName string `json:"username"`
         Email    string `json:"email"`
         Password string `json:"password"`
     }
-
     if err := json.Unmarshal(decryptedData, &userData); err != nil {
         http.Error(w, "Invalid data format", http.StatusBadRequest)
         return
     }
 
-    log.Printf("Registering user: %s (%s)", userData.Name, userData.Email)
-
-    ipAddress := middleware.GetIP(r)
-    log.Printf("Registration request from IP: %s", ipAddress)
-
+    // Create new user model
     user := &models.User{
-        Name:     userData.Name,
-        Email:    userData.Email,
-        Password: userData.Password,
-        IPAddress: ipAddress,
+        Name:         userData.UserName,
+        Email:        userData.Email,
+        Password:     userData.Password,
+        IPAddress:    middleware.GetIP(r),
+        StorageUsed:  0,
+        StorageLimit: 10,
+        CreatedAt:    time.Now(),
     }
-
-    user.CreatedAt = time.Now()
     user.UserID = utils.GenerateUserID(user.Name, user.Email, user.Password)
 
+    // Register user in database
     if err := h.userService.RegisterUser(*user); err != nil {
         log.Printf("Registration failed: %v", err)
         http.Error(w, "Registration failed", http.StatusInternalServerError)
         return
     }
 
-    log.Printf("User registered successfully: %s", userData.Email)
+    // Generate JWT token for new user
+    token, err := h.userService.GenerateToken(user)
+    if err != nil {
+        log.Printf("Token generation failed: %v", err)
+        http.Error(w, "Registration failed", http.StatusInternalServerError)
+        return
+    }
 
-    w.WriteHeader(http.StatusCreated)
+    // Prepare response data
+    responseData := map[string]interface{}{
+        "token": token,
+        "user": map[string]interface{}{
+            "username":     user.Name,
+            "email":       user.Email,
+            "storageUsed": user.StorageUsed,
+            "storageLimit": user.StorageLimit,
+        },
+    }
+
+    // Encrypt response
+    jsonData, err := json.Marshal(responseData)
+    if err != nil {
+        http.Error(w, "Failed to prepare response", http.StatusInternalServerError)
+        return
+    }
+
+    encryptedResponse, err := crypto.Encrypt(jsonData)
+    if err != nil {
+        http.Error(w, "Failed to encrypt response", http.StatusInternalServerError)
+        return
+    }
+
+    // Send encrypted response
+    w.Header().Set("Content-Type", "application/json")
     json.NewEncoder(w).Encode(map[string]string{
-        "message": "User registered successfully",
+        "data": encryptedResponse,
     })
+    
+    log.Printf("User registered successfully: %s", userData.Email)
 }
 
 
@@ -115,8 +147,11 @@ func (h *UserHandler) sendEncryptedResponse(w http.ResponseWriter, user *models.
     responseData := map[string]interface{}{
         "token": token,
         "user": map[string]interface{}{
+            "username": user.Name,
             "email": user.Email,
-            "name":  user.Name,
+            "storageUsed": 0, // Need to make this dynamic
+            "storageLimit": 10, // Default storage limit
+            "createdAt": user.CreatedAt,
         },
         "message": "Login successful",
     }
