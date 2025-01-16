@@ -72,7 +72,15 @@ func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 
     // Register user in database
     if err := h.userService.RegisterUser(*user); err != nil {
-        log.Printf("Registration failed: %v", err)
+        // Check for duplicate error messages
+        if err.Error() == "Email already registered" || err.Error() == "Username already taken" {
+            w.WriteHeader(http.StatusConflict)
+            json.NewEncoder(w).Encode(map[string]string{
+                "error": err.Error(),
+            })
+            return
+        }
+        
         http.Error(w, "Registration failed", http.StatusInternalServerError)
         return
     }

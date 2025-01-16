@@ -4,10 +4,12 @@ package repository
 import (
     "context"
     "time"
+    "fmt"
     "backend/internal/models"
     "go.mongodb.org/mongo-driver/mongo"
     "go.mongodb.org/mongo-driver/bson"
     "go.mongodb.org/mongo-driver/bson/primitive"
+    "go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type UserRepository struct {
@@ -16,6 +18,25 @@ type UserRepository struct {
 
 func NewUserRepository(client *mongo.Client) *UserRepository {
     collection := client.Database("Storely").Collection("users")
+
+    // Create unique indexes
+    indexes := []mongo.IndexModel{
+        {
+            Keys:    bson.D{{Key: "email", Value: 1}},
+            Options: options.Index().SetUnique(true),
+        },
+        {
+            Keys:    bson.D{{Key: "name", Value: 1}},
+            Options: options.Index().SetUnique(true),
+        },
+    }
+    
+    _, err := collection.Indexes().CreateMany(context.Background(), indexes)
+    if err != nil {
+        fmt.Printf("failed to create indexes: %v\n", err)
+        return nil
+    }
+    
     return &UserRepository{collection: collection}
 }
 
@@ -65,4 +86,26 @@ func (r *UserRepository) UpdateLockStatus(ctx context.Context, userID primitive.
     }
     _, err := r.collection.UpdateOne(ctx, bson.M{"_id": userID}, update)
     return err
+}
+
+func (r *UserRepository) CheckDuplicate(ctx context.Context, email, username string) (bool, string, error) {
+    // Check email
+    count, err := r.collection.CountDocuments(ctx, bson.M{"email": email})
+    if err != nil {
+        return false, "", err
+    }
+    if count > 0 {
+        return true, "Email already registered", nil
+    }
+
+    // Check username
+    count, err = r.collection.CountDocuments(ctx, bson.M{"name": username})
+    if err != nil {
+        return false, "", err
+    }
+    if count > 0 {
+        return true, "Username already taken", nil
+    }
+
+    return false, "", nil
 }

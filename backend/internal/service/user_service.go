@@ -6,6 +6,7 @@ import (
     "time"
     "errors"
     "log"
+    "fmt"
     "backend/internal/models"
     "backend/internal/repository"
     "backend/utils"
@@ -20,6 +21,15 @@ func NewUserService(repo *repository.UserRepository) *UserService {
 }
 
 func (s *UserService) RegisterUser(user models.User) error {
+    // Check for duplicates first
+    exists, message, err := s.repo.CheckDuplicate(context.Background(), user.Email, user.Name)
+    if err != nil {
+        return err
+    }
+    if exists {
+        return fmt.Errorf(message)
+    }
+
     hashedPassword, err := utils.HashPassword(user.Password)
     if err != nil {
         return err
