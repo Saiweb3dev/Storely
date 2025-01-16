@@ -10,6 +10,7 @@ import (
 // Make sure we use one consistent type name: FileMinIO
 type FileMinIO struct {
     ID          primitive.ObjectID `bson:"_id,omitempty" json:"id"`
+    UserID      string            `bson:"user_id" json:"userID"`
     FileName    string            `bson:"file_name" json:"fileName"`
     FileType    string            `bson:"file_type" json:"fileType"`
     Size        int64             `bson:"size" json:"size"`

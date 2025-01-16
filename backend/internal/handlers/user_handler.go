@@ -77,42 +77,10 @@ func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    // Generate JWT token for new user
-    token, err := h.userService.GenerateToken(user)
-    if err != nil {
-        log.Printf("Token generation failed: %v", err)
-        http.Error(w, "Registration failed", http.StatusInternalServerError)
-        return
-    }
-
-    // Prepare response data
-    responseData := map[string]interface{}{
-        "token": token,
-        "user": map[string]interface{}{
-            "username":     user.Name,
-            "email":       user.Email,
-            "storageUsed": user.StorageUsed,
-            "storageLimit": user.StorageLimit,
-        },
-    }
-
-    // Encrypt response
-    jsonData, err := json.Marshal(responseData)
-    if err != nil {
-        http.Error(w, "Failed to prepare response", http.StatusInternalServerError)
-        return
-    }
-
-    encryptedResponse, err := crypto.Encrypt(jsonData)
-    if err != nil {
-        http.Error(w, "Failed to encrypt response", http.StatusInternalServerError)
-        return
-    }
-
     // Send encrypted response
     w.Header().Set("Content-Type", "application/json")
     json.NewEncoder(w).Encode(map[string]string{
-        "data": encryptedResponse,
+        "message": "Registration successful",
     })
     
     log.Printf("User registered successfully: %s", userData.Email)
@@ -147,10 +115,11 @@ func (h *UserHandler) sendEncryptedResponse(w http.ResponseWriter, user *models.
     responseData := map[string]interface{}{
         "token": token,
         "user": map[string]interface{}{
+            "userID": user.UserID,
             "username": user.Name,
             "email": user.Email,
-            "storageUsed": 0, // Need to make this dynamic
-            "storageLimit": 10, // Default storage limit
+            "storageUsed": user.StorageUsed,
+            "storageLimit": user.StorageLimit,
             "createdAt": user.CreatedAt,
         },
         "message": "Login successful",

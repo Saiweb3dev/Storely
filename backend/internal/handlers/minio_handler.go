@@ -31,6 +31,7 @@ func NewMinIOFileHandler(minioRepo *repository.MinIOFileRepository, minioClient 
 
 func (h *MinIOFileHandler) InitializeMinIOUpload(w http.ResponseWriter, r *http.Request) {
     var req struct {
+        UserID      string `json:"userID"`
         FileName    string `json:"fileName"`
         FileType    string `json:"fileType"`
         FileSize    int64  `json:"fileSize"`
@@ -44,6 +45,7 @@ func (h *MinIOFileHandler) InitializeMinIOUpload(w http.ResponseWriter, r *http.
 
     file := &models.FileMinIO{
         ID:          primitive.NewObjectID(),
+        UserID:      req.UserID,
         FileName:    req.FileName,
         FileType:    req.FileType,
         Size:        req.FileSize,
