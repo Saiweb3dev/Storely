@@ -1,6 +1,6 @@
 import React from 'react';
 import { X } from 'lucide-react';
-
+import { bytesToMB,bytesToGB } from '@/utils/dataSizeUtils';
 interface UserProfileModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -44,11 +44,11 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({
             ></div>
           </div>
           <div className="flex justify-between mt-1 text-sm">
-            <span className='text-blue-600'>{storageUsed.toFixed(2)} GB used</span>
-            <span>{storageLeft.toFixed(2)} GB left</span>
+            <span className='text-blue-600'>{bytesToMB(storageUsed)} used</span>
+            <span>{bytesToMB(storageLeft)} left</span>
           </div>
           <p className="text-center mt-2">
-            {usagePercentage.toFixed(1)}% of {storageLimit} GB used
+            {usagePercentage.toFixed(1)}% of {bytesToGB(storageLimit)} used
           </p>
         </div>
         <button

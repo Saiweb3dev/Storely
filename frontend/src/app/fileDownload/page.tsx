@@ -1,4 +1,4 @@
-import FileDownload from "@/components/FileDownload";
+import FileDownload from "@/components/File/FileDownload";
 import RecentUploads from "@/components/RecentUpload";
 export default function Page() {
   return (

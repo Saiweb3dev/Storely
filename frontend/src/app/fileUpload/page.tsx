@@ -1,4 +1,4 @@
-import FileUpload from "@/components/FileUpload";
+import FileUpload from "@/components/File/FileUpload";
 import RecentUploads from "@/components/RecentUpload";
 
 export default function Home() {

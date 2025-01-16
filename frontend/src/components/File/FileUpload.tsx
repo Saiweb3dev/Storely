@@ -6,7 +6,7 @@ import { Upload, X, AlertCircle, File } from 'lucide-react'
 import { RecentUpload, UploadProgressInfo,FileWithPreview } from '@/types/upload'
 import { useUploads } from '@/contexts/UploadsContext';
 import MinIODirectUpload from './MinIODirectUpload'
-
+import { useAuth } from '@/contexts/AuthContext'
 
 export default function FileUpload() {
   const { addUploads } = useUploads();
@@ -14,6 +14,7 @@ export default function FileUpload() {
   const [uploadProgress, setUploadProgress] = useState<UploadProgressInfo[]>([])
   const [isUploading, setIsUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const { userData } = useAuth()
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     setFiles(acceptedFiles.map(file => Object.assign(file, {
@@ -232,6 +233,7 @@ export default function FileUpload() {
       <div className="flex flex-col gap-2 p-4"> 
 
      <MinIODirectUpload
+     userData={userData}
     file={files[0]}
     onProgress={handleDirectProgress}
     onComplete={handleDirectComplete}

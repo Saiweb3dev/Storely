@@ -7,6 +7,7 @@ import { MinIODirectUploadProps } from "@/types/minio"
 const CHUNK_SIZE = 5 * 1024 * 1024
 
 export default function MinIODirectUpload({
+  userData,
   file,
   onProgress,
   onComplete,
@@ -17,9 +18,12 @@ export default function MinIODirectUpload({
   const uploadToMinIO = async () => {
     if (!file) return
     setUploading(true)
+    console.log("User Datain MinIODirectUpload : ", userData)
+    console.log("User ID MinIODirectUpload : ", userData.userID)
     try {
       // Initialize upload
       const initRes = await axios.post("http://localhost:8080/api/minio/files/init", {
+        userID : userData.userID,
         fileName: file.name,
         fileType: file.type,
         fileSize: file.size,

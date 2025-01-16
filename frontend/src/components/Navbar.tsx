@@ -1,27 +1,54 @@
-"use client"
-import React, { useState, useEffect } from 'react'
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import { Cloud, User } from 'lucide-react'
-import UserProfileModal from './User/UserProfileModal'
-import { useAuth } from '@/contexts/AuthContext'
+'use client'
 
-const Navbar = () => {
-  const pathname = usePathname()
-  const { isLoggedIn, userData, logout } = useAuth();
-  const [isModalOpen, setIsModalOpen] = useState(false)
+import React, { useState } from 'react';
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
+import { Cloud, User } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import UserProfileModal from './Modal/UserProfileModal';
+import { UnauthorizedModal } from './Modal/UnauthorizedModal';
 
-  const handleUserIconClick = () => {
+// You might want to move these interfaces to a separate types file
+interface UserData {
+  userID?: string;
+  username?: string;
+  storageUsed?: number;
+  storageLimit?: number;
+}
+
+interface AuthContextType {
+  isLoggedIn: boolean;
+  userData: UserData;
+  logout: () => void;
+}
+
+const Navbar: React.FC = () => {
+  const pathname = usePathname();
+  const router = useRouter();
+  const { isLoggedIn, userData, logout } = useAuth() as AuthContextType;
+  
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState<boolean>(false);
+  const [isUnauthorizedModalOpen, setIsUnauthorizedModalOpen] = useState<boolean>(false);
+
+  const handleNavigation = (path: string): void => {
+    if (!isLoggedIn) {
+      setIsUnauthorizedModalOpen(true);
+      return;
+    }
+    router.push(path);
+  };
+
+  const handleUserIconClick = (): void => {
     if (isLoggedIn) {
-      setIsModalOpen(true);
+      setIsProfileModalOpen(true);
     } else {
-      window.location.href = '/auth';
+      router.push('/auth');
     }
   };
 
-  const handleDisconnect = () => {
+  const handleDisconnect = (): void => {
     logout();
-    setIsModalOpen(false);
+    setIsProfileModalOpen(false);
   };
 
   return (
@@ -32,37 +59,50 @@ const Navbar = () => {
           <span className="text-xl font-bold text-gray-800">Storely</span>
         </Link>
         <div className="flex space-x-4">
-          <Link 
-            href="/fileUpload" 
-            className={`text-gray-600 hover:text-blue-500 ${pathname === '/fileUpload' ? 'font-bold' : ''}`}
+          <button
+            onClick={() => handleNavigation('/fileUpload')}
+            type="button"
+            className={`text-gray-600 hover:text-blue-500 ${
+              pathname === '/fileUpload' ? 'font-bold' : ''
+            }`}
           >
             Upload
-          </Link>
-          <Link 
-            href="/fileDownload" 
-            className={`text-gray-600 hover:text-blue-500 ${pathname === '/fileDownload' ? 'font-bold' : ''}`}
+          </button>
+          <button
+            onClick={() => handleNavigation('/fileDownload')}
+            type="button"
+            className={`text-gray-600 hover:text-blue-500 ${
+              pathname === '/fileDownload' ? 'font-bold' : ''
+            }`}
           >
             Download
-          </Link>
+          </button>
         </div>
-        <div 
+        <div
           className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center cursor-pointer"
           onClick={handleUserIconClick}
+          role="button"
+          tabIndex={0}
         >
           <User className="h-5 w-5 text-gray-600" />
         </div>
       </div>
+      
       <UserProfileModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        username={userData.username || 'No username'}
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        username={userData?.username || 'No username'}
         onDisconnect={handleDisconnect}
         storageUsed={userData?.storageUsed || 0}
         storageLimit={userData?.storageLimit || 10}
       />
+      
+      <UnauthorizedModal
+        isOpen={isUnauthorizedModalOpen}
+        onClose={() => setIsUnauthorizedModalOpen(false)}
+      />
     </nav>
-  )
-}
+  );
+};
 
-export default Navbar
-
+export default Navbar;

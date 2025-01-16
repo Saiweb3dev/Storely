@@ -5,6 +5,7 @@ export interface SignInFormData {
 }
 
 export interface SignUpFormData {
+  userID : string;
   username: string;
   email: string;
   password: string;
@@ -13,6 +14,7 @@ export interface SignUpFormData {
 export interface AuthResponse {
   token: string;
   user: {
+    userID: string;
     username: string;
     email: string;
     storageUsed: number;

@@ -20,24 +20,20 @@ export async function signUp(data: SignUpFormData): Promise<AuthResponse> {
     }
     console.log("Response: ", response)
 
-    const encrypted = await response.json();
-    if (encrypted.data) {
-      const decrypted = decryptData(encrypted.data);
+    // const encrypted = await response.json();
+    // if (encrypted.data) {
+    //   const decrypted = decryptData(encrypted.data);
 
-      console.log("Decrypted: ", decrypted)
+    //   console.log("Decrypted: ", decrypted.user)
       
-      // Ensure the response matches the AuthResponse interface
-      return {
-        token: decrypted.token,
-        user: {
-          username: decrypted.user?.username || data.username,
-          email: decrypted.user?.email || data.email,
-          storageUsed: decrypted.user?.storageUsed || 0,
-          storageLimit: decrypted.user?.storageLimit || 10
-        }
-      };
-    }
-    throw new Error('Invalid response format');
+    //   // Ensure the response matches the AuthResponse interface
+    //   return {
+    //     token: decrypted.token,
+    //     user: decrypted.user
+    //   };
+    return response.json();
+    // }
+    // throw new Error('Invalid response format');
   } catch (error) {
     console.error('SignUp error:', error);
     throw error;
@@ -64,7 +60,9 @@ export async function signIn(data: Pick<SignInFormData, 'email' | 'password'>): 
 
     const encrypted = await response.json();
     // Decrypt the response data to get the token
-    return decryptData(encrypted.data);
+    const decryptedData = decryptData(encrypted.data)
+    console.log("Login Response: ", decryptedData)
+    return decryptedData;
   } catch (error) {
     throw error;
   }

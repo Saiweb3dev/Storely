@@ -25,6 +25,7 @@ export interface RecentUpload {
 }
 
 export interface MinIODirectUploadProps {
+  userData: any
   file: File          // The file to upload
   onProgress: (info: UploadProgressInfo) => void
   onComplete: (upload: RecentUpload) => void

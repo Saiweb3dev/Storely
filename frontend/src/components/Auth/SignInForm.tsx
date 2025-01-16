@@ -8,9 +8,10 @@ interface SignInFormProps {
   onSwitch: () => void;
   isLoading: boolean;
   error: string | null;
+  successMessage: string | null;
 }
 
-export function SignInForm({ onSubmit, onSwitch, isLoading, error }: SignInFormProps) {
+export function SignInForm({ onSubmit, onSwitch, isLoading, error,successMessage }: SignInFormProps) {
   const [formData, setFormData] = useState<SignInFormData>({
     email: '',
     password: ''
@@ -171,18 +172,11 @@ export function SignInForm({ onSubmit, onSwitch, isLoading, error }: SignInFormP
         </button>
       </motion.div>
 
-      {/* <motion.div
-        className="absolute inset-0 -z-10 bg-gradient-to-br from-blue-900 to-purple-600 opacity-50"
-        animate={{
-          backgroundPosition: ['0% 0%', '100% 100%'],
-          transition: {
-            duration: 20,
-            ease: 'linear',
-            repeat: Infinity,
-            repeatType: 'reverse'
-          }
-        }}
-      /> */}
+      {successMessage && (
+        <div className="mt-4 p-3 bg-green-50 border border-green-200 text-green-600 rounded-md">
+          {successMessage}
+        </div>
+      )}
     </motion.div>
   );
 }

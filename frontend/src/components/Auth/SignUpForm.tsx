@@ -12,6 +12,7 @@ interface SignUpFormProps {
 
 export function SignUpForm({ onSubmit, onSwitch, isLoading, error }: SignUpFormProps) {
   const [formData, setFormData] = useState<SignUpFormData>({
+    userID: '',
     username: '',
     email: '',
     password: ''

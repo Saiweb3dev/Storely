@@ -1,16 +1,33 @@
 // utils/authUtils.ts
+interface StoredUserData {
+  userID: string;
+  username: string;
+  email: string;
+  storageUsed: number;
+  storageLimit: number;
+}
+
 export const authUtils = {
   TOKEN_KEY: 'authToken',
   USER_KEY: 'userData',
   EXPIRY_KEY: 'tokenExpiry',
 
-  setAuth(token: string, userData: any) {
+  setAuth(token: string, userData: StoredUserData) {
     const expiry = new Date();
     expiry.setHours(expiry.getHours() + 24);
+
+    // Ensure consistent casing when storing
+    const normalizedUserData = {
+      userID: userData.userID || '',
+      username: userData.username || '',
+      email: userData.email || '',
+      storageUsed: userData.storageUsed || 0,
+      storageLimit: userData.storageLimit || 10
+    };
     
     localStorage.setItem(this.TOKEN_KEY, token);
     localStorage.setItem(this.EXPIRY_KEY, expiry.toISOString());
-    localStorage.setItem(this.USER_KEY, JSON.stringify(userData));
+    localStorage.setItem(this.USER_KEY, JSON.stringify(normalizedUserData));
   },
 
   getAuth() {
@@ -32,6 +49,7 @@ export const authUtils = {
       return {
         token,
         userData: {
+          userID: userData.userID || '',
           username: userData.username || '',
           email: userData.email || '',
           storageUsed: userData.storageUsed || 0,
