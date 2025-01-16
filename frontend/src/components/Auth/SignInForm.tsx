@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Loader2, Mail, Lock } from 'lucide-react';
+import { Loader2, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { SignInFormData } from '@/types/auth';
 
 interface SignInFormProps {
@@ -11,17 +11,22 @@ interface SignInFormProps {
   successMessage: string | null;
 }
 
-export function SignInForm({ onSubmit, onSwitch, isLoading, error,successMessage }: SignInFormProps) {
+export function SignInForm({ onSubmit, onSwitch, isLoading, error, successMessage }: SignInFormProps) {
   const [formData, setFormData] = useState<SignInFormData>({
     email: '',
     password: ''
   });
 
   const [focusedField, setFocusedField] = useState<'email' | 'password' | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSubmit(formData);
+  };
+
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
   };
 
   return (
@@ -73,6 +78,7 @@ export function SignInForm({ onSubmit, onSwitch, isLoading, error,successMessage
               placeholder="Email"
               className="w-full text-black pl-10 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               disabled={isLoading}
+              autoComplete="email"
             />
             <AnimatePresence>
               {focusedField === 'email' && (
@@ -93,15 +99,48 @@ export function SignInForm({ onSubmit, onSwitch, isLoading, error,successMessage
           >
             <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
             <input
-              type="password"
+              type={showPassword ? "text" : "password"}
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
               onFocus={() => setFocusedField('password')}
               onBlur={() => setFocusedField(null)}
               placeholder="Password"
-              className="w-full text-black pl-10 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full text-black pl-10 pr-12 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               disabled={isLoading}
+              autoComplete="current-password"
             />
+            <motion.button
+              type="button"
+              onClick={togglePasswordVisibility}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 focus:outline-none w-6 h-6 flex items-center justify-center"
+              aria-label={showPassword ? "Hide password" : "Show password"}
+            >
+              <AnimatePresence mode="wait" initial={false}>
+                {showPassword ? (
+                  <motion.div
+                    key="eye-off"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="flex items-center justify-center"
+                  >
+                    <EyeOff size={16} />
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="eye"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="flex items-center justify-center"
+                  >
+                    <Eye size={16} />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.button>
             <AnimatePresence>
               {focusedField === 'password' && (
                 <motion.div
