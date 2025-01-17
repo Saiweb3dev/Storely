@@ -217,3 +217,4 @@ func (h *UserHandler) setCORSHeaders(w http.ResponseWriter) {
     w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Content-Encrypted")
     w.Header().Set("Access-Control-Allow-Credentials", "true")
 }
+

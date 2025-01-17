@@ -37,5 +37,7 @@ func NewRouter(
 	
 	router.HandleFunc("/api/minio/files/{fileId}/complete", minioFileHandler.CompleteMinIOUpload).Methods("POST")
 
+	router.HandleFunc("/get/user/storageHealth", minioFileHandler.GetUserStorageHealth).Methods("GET")
+
 	return router
 }

@@ -71,5 +71,16 @@ export const authUtils = {
 
   isLoggedIn() {
     return !!this.getAuth();
+  },
+  
+  getAuthTokenAndUserId() {
+    const token = localStorage.getItem(authUtils.TOKEN_KEY) || ''
+    const userData = localStorage.getItem(authUtils.USER_KEY)
+    let userID = ''
+    if (userData) {
+      const parsed = JSON.parse(userData)
+      userID = parsed.userID || ''
+    }
+    return { token, userID }
   }
 };

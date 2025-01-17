@@ -2,17 +2,20 @@
 package handlers
 
 import (
-    "encoding/json"
-    "net/http"
-    "time"
-    "fmt"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"strings"
+	"time"
 
-    "backend/internal/models"
-    "backend/internal/repository"
-    
-    "github.com/gorilla/mux"
-    "github.com/minio/minio-go/v7"
-    "go.mongodb.org/mongo-driver/bson/primitive"
+	"backend/internal/models"
+	"backend/internal/repository"
+	"backend/utils"
+
+	"github.com/gorilla/mux"
+	"github.com/minio/minio-go/v7"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type MinIOFileHandler struct {
@@ -121,5 +124,43 @@ func (h *MinIOFileHandler) CompleteMinIOUpload(w http.ResponseWriter, r *http.Re
     json.NewEncoder(w).Encode(map[string]string{
         "status": "success",
         "fileId": fileID,
+    })
+}
+
+func (h *MinIOFileHandler) GetUserStorageHealth(w http.ResponseWriter, r *http.Request) {
+    log.Println("Received request to get user storage health")
+    
+    // Validate JWT token
+    tokenString := r.Header.Get("Authorization")
+    if tokenString == "" {
+        http.Error(w, "Authorization header missing", http.StatusUnauthorized)
+        return
+    }
+    tokenString = strings.TrimPrefix(tokenString, "Bearer ")
+    token, err := utils.ValidateJWT(tokenString)
+    if err != nil || !token.Valid {
+        http.Error(w, "Invalid token", http.StatusUnauthorized)
+        return
+    }
+
+    // Get userID from query parameters instead of body
+    userID := r.URL.Query().Get("userID")
+    if userID == "" {
+        http.Error(w, "Missing userID parameter", http.StatusBadRequest)
+        return
+    }
+
+    used, limit, err := h.userRepo.GetStorageUsedAndLimit(r.Context(), userID)
+    if err != nil {
+        http.Error(w, "Unable to retrieve storage data", http.StatusInternalServerError)
+        return
+    }
+    balance := limit - used
+
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(map[string]interface{}{
+        "storageUsed":      used,
+        "storageLimit":     limit,
+        "availableBalance": balance,
     })
 }
