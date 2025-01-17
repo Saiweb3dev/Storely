@@ -17,13 +17,15 @@ import (
 
 type MinIOFileHandler struct {
     minioRepo   *repository.MinIOFileRepository
+    userRepo   *repository.UserRepository
     minioClient *minio.Client
     bucketName  string
 }
 
-func NewMinIOFileHandler(minioRepo *repository.MinIOFileRepository, minioClient *minio.Client, bucketName string) *MinIOFileHandler {
+func NewMinIOFileHandler(minioRepo *repository.MinIOFileRepository,userRepo *repository.UserRepository, minioClient *minio.Client, bucketName string) *MinIOFileHandler {
     return &MinIOFileHandler{
         minioRepo:   minioRepo,
+        userRepo:   userRepo,
         minioClient: minioClient,
         bucketName:  bucketName,
     }
@@ -34,11 +36,16 @@ func (h *MinIOFileHandler) InitializeMinIOUpload(w http.ResponseWriter, r *http.
         UserID      string `json:"userID"`
         FileName    string `json:"fileName"`
         FileType    string `json:"fileType"`
-        FileSize    int64  `json:"fileSize"`
+        FileSize    float64  `json:"fileSize"`
         TotalChunks int    `json:"totalChunks"`
     }
 
     if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+        http.Error(w, err.Error(), http.StatusBadRequest)
+        return
+    }
+
+    if err := h.userRepo.CheckUserStorageLimit(r.Context(), req.UserID, req.FileSize); err != nil {
         http.Error(w, err.Error(), http.StatusBadRequest)
         return
     }

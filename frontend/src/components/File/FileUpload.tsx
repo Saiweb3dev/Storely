@@ -113,6 +113,7 @@ export default function FileUpload() {
 
   // Handle errors from direct MinIO
   const handleDirectError = (message: string) => {
+    console.log(message)
     setError(message)
   }
 

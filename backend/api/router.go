@@ -17,13 +17,14 @@ func NewRouter(
 	minioClient *minio.Client,
 	chunkRepo *repository.ChunkRepository,
 	fileRepo *repository.FileRepository,
+	userRepo *repository.UserRepository,
 	userService *service.UserService,
 	bucket string,
 ) *mux.Router {
 	router := mux.NewRouter()
 
 	minioRepo := repository.NewMinIOFileRepository(mongoClient)
-	minioFileHandler := handlers.NewMinIOFileHandler(minioRepo, minioClient, bucket)
+	minioFileHandler := handlers.NewMinIOFileHandler(minioRepo,userRepo, minioClient, bucket)
 	chunkHandler := handlers.NewChunkHandler(chunkRepo, fileRepo, minioRepo, minioClient, bucket)
 	userHandler := handlers.NewUserHandler(userService)
 

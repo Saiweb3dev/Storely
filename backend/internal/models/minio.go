@@ -13,7 +13,7 @@ type FileMinIO struct {
     UserID      string            `bson:"user_id" json:"userID"`
     FileName    string            `bson:"file_name" json:"fileName"`
     FileType    string            `bson:"file_type" json:"fileType"`
-    Size        int64             `bson:"size" json:"size"`
+    Size        float64             `bson:"size" json:"size"`
     TotalChunks int               `bson:"total_chunks" json:"totalChunks"`
     CreatedAt   time.Time         `bson:"created_at" json:"createdAt"`
     UpdatedAt   time.Time         `bson:"updated_at" json:"updatedAt"`

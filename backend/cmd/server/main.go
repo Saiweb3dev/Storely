@@ -51,12 +51,13 @@ func main() {
     
     // Initialize services
     fileService := service.NewFileService(fileRepo)
-    userService := service.NewUserService(userRepo) // Add this
+    userService := service.NewUserService(userRepo)
+
     
 
     // Create router and register API routes
     bucket := os.Getenv("MINIO_BUCKET_NAME")
-    router := api.NewRouter(client,fileService, minioClient, chunkRepo,fileRepo,userService, bucket)
+    router := api.NewRouter(client,fileService, minioClient, chunkRepo,fileRepo,userRepo,userService, bucket)
 
     // Configure CORS middleware
     corsMiddleware := middleware.CORS(router)

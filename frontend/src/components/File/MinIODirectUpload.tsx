@@ -58,7 +58,16 @@ export default function MinIODirectUpload({
         size: file.size,
       })
     } catch (err: any) {
-      onError(err.message || "MinIO upload failed")
+      let errMessage = 'Upload failed'
+      if (err.response?.data) {
+        // Check if it's a string or a structured object
+        if (typeof err.response.data === 'string') {
+          errMessage = err.response.data
+        } else if (err.response.data.message) {
+          errMessage = err.response.data.message
+        }
+      }
+      onError(errMessage)
     } finally {
       setUploading(false)
     }

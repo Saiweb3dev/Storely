@@ -109,3 +109,28 @@ func (r *UserRepository) CheckDuplicate(ctx context.Context, email, username str
 
     return false, "", nil
 }
+
+// In user_repository.go
+func (r *UserRepository) GetStorageUsedAndLimit(ctx context.Context, userID string) (float64, float64, error) {
+    filter := bson.M{"user_id": userID}
+    var user models.User
+    if err := r.collection.FindOne(ctx, filter).Decode(&user); err != nil {
+        return 0, 0, fmt.Errorf("failed to find user: %w", err)
+    }
+    return user.StorageUsed, user.StorageLimit, nil
+}
+
+func (r *UserRepository) CheckUserStorageLimit(ctx context.Context, userID string, fileSize float64) error {
+    used, limit, err := r.GetStorageUsedAndLimit(ctx, userID)
+    if err != nil {
+        return err
+    }
+    if used+fileSize > limit {
+        return fmt.Errorf("storage limit exceeded")
+    }
+    _, err = r.collection.UpdateOne(ctx, bson.M{"user_id": userID}, bson.M{"$inc": bson.M{"storage_used": fileSize}})
+    if err != nil {
+        return fmt.Errorf("failed to update storage: %w", err)
+    }
+    return nil
+}
