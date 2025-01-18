@@ -15,7 +15,9 @@ import (
     "backend/api"
     "backend/middleware"
     "backend/utils/crypto"
+    "backend/utils/logger"
     "go.mongodb.org/mongo-driver/mongo"
+    "go.uber.org/zap"
 )
 
 func main() {
@@ -47,11 +49,14 @@ func main() {
 
     fileRepo := repository.NewFileRepository(client)
     chunkRepo := repository.NewChunkRepository(client)
-    userRepo := repository.NewUserRepository(client) // Add this
+    userRepo := repository.NewUserRepository(client)
+    logRepo := repository.NewLogRepository(client)
+
     
     // Initialize services
     fileService := service.NewFileService(fileRepo)
     userService := service.NewUserService(userRepo)
+    logger.InitializeLogger(logRepo)
 
     
 
@@ -67,6 +72,8 @@ func main() {
     if port == "" {
         port = "8080"
     }
+    logger.L().Info("Server started", zap.String("port", os.Getenv("SERVER_PORT")))
+	logger.L().Error("Example error log", zap.String("context", "example"))
 
     server := startServer(corsMiddleware, port)
     gracefulShutdown(server)
