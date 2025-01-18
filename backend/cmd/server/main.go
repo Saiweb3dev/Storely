@@ -20,6 +20,8 @@ import (
     "go.uber.org/zap"
 )
 
+
+
 func main() {
     // Load environment variables
     config.LoadEnv()
@@ -66,6 +68,7 @@ func main() {
 
     // Configure CORS middleware
     corsMiddleware := middleware.CORS(router)
+    router.Use(middleware.MetricsMiddleware)
 
     // Start the HTTP server
     port := os.Getenv("SERVER_PORT")

@@ -9,6 +9,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/minio/minio-go/v7"
 	"go.mongodb.org/mongo-driver/mongo"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func NewRouter(
@@ -28,6 +29,10 @@ func NewRouter(
 	chunkHandler := handlers.NewChunkHandler(chunkRepo, fileRepo, minioRepo, minioClient, bucket)
 	userHandler := handlers.NewUserHandler(userService)
 
+	//Test
+	testRepo := repository.NewTestRepository(mongoClient)
+	testHandler := handlers.NewTestHandler(testRepo)
+
 	router.HandleFunc("/upload-chunk", chunkHandler.HandleChunkUpload).Methods("POST", "OPTIONS")
 	router.HandleFunc("/api/minio/files/init", minioFileHandler.InitializeMinIOUpload).Methods("POST")
 	router.HandleFunc("/files/minio/{fileId}", chunkHandler.GetFileFromMinIO).Methods("GET")
@@ -38,6 +43,13 @@ func NewRouter(
 	router.HandleFunc("/api/minio/files/{fileId}/complete", minioFileHandler.CompleteMinIOUpload).Methods("POST")
 
 	router.HandleFunc("/get/user/storageHealth", minioFileHandler.GetUserStorageHealth).Methods("GET")
+
+	// Add Prometheus metrics endpoint
+	router.Handle("/metrics", promhttp.Handler())
+
+	// Routes for testing
+	router.HandleFunc("/test/post", testHandler.InsertTestData).Methods("POST")
+	router.HandleFunc("/test/last", testHandler.GetLastTestData).Methods("GET")
 
 	return router
 }
