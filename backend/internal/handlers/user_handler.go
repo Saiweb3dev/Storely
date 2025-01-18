@@ -12,9 +12,9 @@ import (
     "backend/utils/crypto"
     "backend/middleware"
     "backend/utils"
+    "backend/utils/logger"
 
-    // "go.mongodb.org/mongo-driver/bson"
-    // "go.mongodb.org/mongo-driver/mongo"
+    "go.uber.org/zap"
 )
 
 type UserHandler struct {
@@ -78,6 +78,11 @@ func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
             json.NewEncoder(w).Encode(map[string]string{
                 "error": err.Error(),
             })
+            logger.L().Error("Registration failed",
+                zap.String("username",user.Name),
+                zap.String("email",user.Email),
+                zap.String("ipAddress",user.IPAddress),
+            zap.Error(err))
             return
         }
         
@@ -91,7 +96,13 @@ func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
         "message": "Registration successful",
     })
     
-    log.Printf("User registered successfully: %s", userData.Email)
+    logger.L().Info("User registered",
+     zap.String("username",user.Name),
+     zap.String("userID",user.UserID),
+     zap.String("email",user.Email),
+     zap.Time("createdAt",user.CreatedAt),
+     zap.String("ipAddress",user.IPAddress),
+    )
 }
 
 
@@ -185,6 +196,11 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
             log.Printf("Login error for %s: %v", creds.Email, err)
             http.Error(w, "Internal server error", http.StatusInternalServerError)
         }
+        logger.L().Error("Login failed",
+                zap.String("username",user.Name),
+                zap.String("email",user.Email),
+                zap.String("ipAddress",user.IPAddress),
+            zap.Error(err))
         return
     }
 
@@ -202,6 +218,13 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
         http.Error(w, "Internal server error", http.StatusInternalServerError)
         return
     }
+    logger.L().Info("User Logged In",
+     zap.String("username",user.Name),
+     zap.String("userID",user.UserID),
+     zap.String("email",user.Email),
+     zap.Time("loggedIn At",time.Now()),
+     zap.String("ipAddress",user.IPAddress),
+    )
 
     log.Printf("Login successful for user: %s", creds.Email)
 }

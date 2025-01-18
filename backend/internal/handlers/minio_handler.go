@@ -12,10 +12,12 @@ import (
 	"backend/internal/models"
 	"backend/internal/repository"
 	"backend/utils"
+    "backend/utils/logger"
 
 	"github.com/gorilla/mux"
 	"github.com/minio/minio-go/v7"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+    "go.uber.org/zap"
 )
 
 type MinIOFileHandler struct {
@@ -68,6 +70,12 @@ func (h *MinIOFileHandler) InitializeMinIOUpload(w http.ResponseWriter, r *http.
 
     if err := h.minioRepo.CreateFile_MinIO(r.Context(), file); err != nil {
         http.Error(w, err.Error(), http.StatusInternalServerError)
+        logger.L().Error("File Creation failed",
+        zap.String("userID",file.UserID),
+                zap.String("File Name",file.FileName),
+                zap.String("File Type",file.FileType),
+                zap.Float64("File Size",file.Size),
+            zap.Error(err))
         return
     }
 
@@ -91,6 +99,14 @@ func (h *MinIOFileHandler) InitializeMinIOUpload(w http.ResponseWriter, r *http.
         "callbackUrl": fmt.Sprintf("http://localhost:8080/api/minio/files/%s/complete", file.ID.Hex()),
     }
 
+    logger.L().Info("File Upload Initialized",
+     zap.String("File ID",file.ID.String()),
+     zap.String("userID",file.UserID),
+     zap.String("File Name",file.FileName),
+     zap.String("File Type",file.FileType),
+     zap.Float64("File Size",file.Size),
+    )
+
     w.Header().Set("Content-Type", "application/json")
     json.NewEncoder(w).Encode(response)
 }
@@ -102,6 +118,12 @@ func (h *MinIOFileHandler) CompleteMinIOUpload(w http.ResponseWriter, r *http.Re
     file, err := h.minioRepo.GetFileByID_MinIO(r.Context(), fileID)
     if err != nil {
         http.Error(w, "File not found", http.StatusNotFound)
+        logger.L().Error("File Not found in MinIO",
+        zap.String("userID",file.UserID),
+                zap.String("File Name",file.FileName),
+                zap.String("File Type",file.FileType),
+                zap.Float64("File Size",file.Size),
+            zap.Error(err))
         return
     }
 
@@ -117,8 +139,22 @@ func (h *MinIOFileHandler) CompleteMinIOUpload(w http.ResponseWriter, r *http.Re
 
     if err := h.minioRepo.MarkFileComplete_MinIO(r.Context(), fileID); err != nil {
         http.Error(w, err.Error(), http.StatusInternalServerError)
+        logger.L().Error("Failed to mark file complete",
+        zap.String("userID",file.UserID),
+                zap.String("File Name",file.FileName),
+                zap.String("File Type",file.FileType),
+                zap.Float64("File Size",file.Size),
+            zap.Error(err))
         return
     }
+
+    logger.L().Info("File Upload Completed",
+     zap.String("File ID",file.ID.String()),
+     zap.String("userID",file.UserID),
+     zap.String("File Name",file.FileName),
+     zap.String("File Type",file.FileType),
+     zap.Float64("File Size",file.Size),
+    )
 
     w.WriteHeader(http.StatusOK)
     json.NewEncoder(w).Encode(map[string]string{
@@ -156,6 +192,11 @@ func (h *MinIOFileHandler) GetUserStorageHealth(w http.ResponseWriter, r *http.R
         return
     }
     balance := limit - used
+
+    logger.L().Info("User Calling for Storage Health Data",
+     zap.String("userID",userID),
+     zap.String("Storage Balance",fmt.Sprintf("%f",balance)),
+    )
 
     w.Header().Set("Content-Type", "application/json")
     json.NewEncoder(w).Encode(map[string]interface{}{
