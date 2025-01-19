@@ -134,3 +134,27 @@ func (r *UserRepository) CheckUserStorageLimit(ctx context.Context, userID strin
     }
     return nil
 }
+
+func (r *UserRepository) DecreaseUsedStorage(ctx context.Context, userID string, size float64) error {
+    // Optionally check current storage:
+    current, _, err := r.GetStorageUsedAndLimit(ctx, userID)
+    if err != nil {
+        return err
+    }
+
+    // Clamp at 0
+    decrement := -size
+    if current < size {
+        decrement = -current
+    }
+
+    _, err = r.collection.UpdateOne(
+        ctx,
+        bson.M{"user_id": userID},
+        bson.M{"$inc": bson.M{"storage_used": decrement}},
+    )
+    if err != nil {
+        return fmt.Errorf("failed to update storage: %w", err)
+    }
+    return nil
+}

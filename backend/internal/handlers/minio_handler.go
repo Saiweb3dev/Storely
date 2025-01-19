@@ -265,6 +265,10 @@ func (h *MinIOFileHandler) DeleteFileFromMinIO(w http.ResponseWriter, r *http.Re
         return
     }
 
+    if err := h.userRepo.DecreaseUsedStorage(r.Context(), file.UserID,file.Size); err != nil {
+        log.Println("Failed to decrement user storage:", err)
+    }
+
     w.WriteHeader(http.StatusOK)
     json.NewEncoder(w).Encode(map[string]string{
         "status": "deleted",
