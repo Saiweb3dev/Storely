@@ -113,3 +113,16 @@ func (r *MinIOFileRepository) UpdateMinIOPath(ctx context.Context, fileID string
 
     return nil
 }
+
+// In repository/minio_file_repository.go
+func (r *MinIOFileRepository) DeleteMinIOFile(ctx context.Context, fileID string) error {
+    objectID, err := primitive.ObjectIDFromHex(fileID)
+    if err != nil {
+        return fmt.Errorf("invalid MinIO file ID format: %w", err)
+    }
+    _, err = r.collection.DeleteOne(ctx, bson.M{"_id": objectID})
+    if err != nil {
+        return fmt.Errorf("failed to delete MinIO file metadata: %w", err)
+    }
+    return nil
+}

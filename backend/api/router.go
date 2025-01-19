@@ -36,6 +36,8 @@ func NewRouter(
 	router.HandleFunc("/upload-chunk", chunkHandler.HandleChunkUpload).Methods("POST", "OPTIONS")
 	router.HandleFunc("/api/minio/files/init", minioFileHandler.InitializeMinIOUpload).Methods("POST")
 	router.HandleFunc("/files/minio/{fileId}", chunkHandler.GetFileFromMinIO).Methods("GET")
+
+  router.HandleFunc("/api/minio/files/delete", minioFileHandler.DeleteFileFromMinIO).Methods("DELETE", "OPTIONS")
 	
 	router.HandleFunc("/api/auth/register", userHandler.Register).Methods("POST", "OPTIONS")
 	router.HandleFunc("/api/auth/login", userHandler.Login).Methods("POST", "OPTIONS")

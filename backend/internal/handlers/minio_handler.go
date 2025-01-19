@@ -205,3 +205,69 @@ func (h *MinIOFileHandler) GetUserStorageHealth(w http.ResponseWriter, r *http.R
         "availableBalance": balance,
     })
 }
+
+// In handlers/minio_file_handler.go
+func (h *MinIOFileHandler) DeleteFileFromMinIO(w http.ResponseWriter, r *http.Request) {
+
+    log.Println("Received request to delete file from MinIO")
+
+    // Validate JWT token
+    tokenString := r.Header.Get("Authorization")
+    if tokenString == "" {
+        http.Error(w, "Authorization header missing", http.StatusUnauthorized)
+        return
+    }
+    tokenString = strings.TrimPrefix(tokenString, "Bearer ")
+    token, err := utils.ValidateJWT(tokenString)
+    if err != nil || !token.Valid {
+        http.Error(w, "Invalid token", http.StatusUnauthorized)
+        return
+    }
+
+    // Parse request body for userId and fileId
+    var req struct {
+        FileID string `json:"fileId"`
+        UserID string `json:"userId"`
+    }
+    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+        http.Error(w, "Invalid request body", http.StatusBadRequest)
+        return
+    }
+    log.Println("FileID:",req.FileID,"UserID:",req.UserID)
+
+    // Retrieve file from DB
+    file, err := h.minioRepo.GetFileByID_MinIO(r.Context(), req.FileID)
+    if err != nil {
+        http.Error(w, "File not found", http.StatusNotFound)
+        return
+    }
+
+    // Check user mismatch
+    if file.UserID != req.UserID {
+        http.Error(w, "Not authorized to delete this file", http.StatusForbidden)
+        return
+    }
+
+    // Remove all chunks
+    for i := 0; i < file.TotalChunks; i++ {
+        objectName := fmt.Sprintf("%s/chunk_%d", req.FileID, i)
+        removeErr := h.minioClient.RemoveObject(r.Context(), h.bucketName, objectName, minio.RemoveObjectOptions{})
+        if removeErr != nil {
+            http.Error(w, "Failed removing chunk(s)", http.StatusInternalServerError)
+            return
+        }
+    }
+
+    // Remove metadata
+    err = h.minioRepo.DeleteMinIOFile(r.Context(), req.FileID)
+    if err != nil {
+        http.Error(w, "Failed to remove metadata", http.StatusInternalServerError)
+        return
+    }
+
+    w.WriteHeader(http.StatusOK)
+    json.NewEncoder(w).Encode(map[string]string{
+        "status": "deleted",
+        "fileId": req.FileID,
+    })
+}
