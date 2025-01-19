@@ -5,11 +5,17 @@ import { motion } from 'framer-motion';
 import { FileIcon, Copy, Check } from 'lucide-react';
 import { useUploads } from '@/contexts/UploadsContext';
 import ClearOptions from './ClearOptions';
+import { useAuth } from '@/contexts/AuthContext';
 
 
 export default function RecentUploads() {
   const { recentUploads } = useUploads();
+  const {userData} = useAuth();
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const userUploads = recentUploads.filter(
+    upload => upload.userId === userData.userID // or userData?.userID
+  );
+  console.log(recentUploads)
 
   const copyToClipboard = async (fileId: string) => {
     try {
@@ -46,11 +52,11 @@ export default function RecentUploads() {
         <ClearOptions />
       </div>
       
-      {recentUploads.length === 0 ? (
+      {userUploads.length === 0 ? (
         <p className="text-blue-500 text-center">No recent uploads</p>
       ) : (
         <div className="space-y-3">
-          {recentUploads.map((upload) => (
+          {userUploads.map((upload) => (
             <motion.div
               key={upload.fileId}
               initial={{ opacity: 0 }}

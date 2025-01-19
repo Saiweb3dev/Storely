@@ -106,7 +106,10 @@ export default function FileUpload() {
 
   // Handle completion from direct MinIO
   const handleDirectComplete = (upload: RecentUpload) => {
-    addUploads([upload])
+    addUploads([{
+      ...upload,
+      userId: userData?.id // or userData?.userID
+    }],userData.userID)
     setFiles([])
     setUploadProgress([])
   }

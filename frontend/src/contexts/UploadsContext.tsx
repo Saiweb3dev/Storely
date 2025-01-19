@@ -5,9 +5,10 @@ import { RecentUpload } from '@/types/upload';
 
 interface UploadsContextType {
   recentUploads: RecentUpload[];
-  addUploads: (uploads: RecentUpload[]) => void;
+  addUploads: (uploads: RecentUpload[], userID: string) => void;
   clearAll: () => void;
   keepLastN: (n: number) => void;
+  removeUpload: (fileId: string) => void;
 }
 
 const UploadsContext = createContext<UploadsContextType | undefined>(undefined);
@@ -30,13 +31,15 @@ export function UploadsProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const addUploads = (newUploads: RecentUpload[]) => {
+   const addUploads = (newUploads: RecentUpload[], userId: string) => {
     setRecentUploads(prev => {
-      const updated = [...newUploads, ...prev];
+      // assign userId to each new upload
+      const uploadsWithUser = newUploads.map(u => ({ ...u, userId }));
+      const updated = [...uploadsWithUser, ...prev];
       localStorage.setItem('recentUploads', JSON.stringify(updated));
       return updated;
     });
-  };
+  }
 
   const clearAll = () => {
     setRecentUploads([]);
@@ -51,8 +54,16 @@ export function UploadsProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
+  const removeUpload = (fileId : string) => {
+    setRecentUploads((prev) => {
+      const updated = prev.filter((item) => item.fileId !== fileId);
+      localStorage.setItem('recentUploads', JSON.stringify(updated));
+      return updated;
+    })
+  }
+
   return (
-    <UploadsContext.Provider value={{ recentUploads, addUploads, clearAll, keepLastN }}>
+    <UploadsContext.Provider value={{ recentUploads, addUploads, clearAll, keepLastN,removeUpload }}>
       {children}
     </UploadsContext.Provider>
   );

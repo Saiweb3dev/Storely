@@ -13,11 +13,12 @@ export interface UploadResponse {
 }
 
 export interface RecentUpload {
+  userId?: string;
   fileId: string;
   fileName: string;
   fileType: string;
   uploadedAt: Date;
-  size?: number; // Add size here
+  size?: number;
 }
 
 export interface UploadOptions {
